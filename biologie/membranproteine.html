@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alles über Membranproteine</title>
+  <style>
+    :root {
+      --text: #2d3748;
+      --heading: #1a202c;
+      --accent: #3182ce;
+      --accent-dark: #2b6cb0;
+      --accent-darker: #2c5282;
+      --bg: #f7fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e0;
+      --muted-bg: #edf2f7;
+      --muted-text: #4a5568;
+      --intro-bg: #ebf8ff;
+      --quote-bg: #f0fff4;
+      --green: #38a169;
+      --green-bg: #f0fff4;
+      --red: #e53e3e;
+      --red-bg: #fff5f5;
+      --orange: #dd6b20;
+      --orange-bg: #fffaf0;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #e2e8f0;
+        --heading: #f7fafc;
+        --accent: #63b3ed;
+        --accent-dark: #90cdf4;
+        --accent-darker: #bee3f8;
+        --bg: #171923;
+        --surface: #1f2430;
+        --border: #2d3748;
+        --border-strong: #4a5568;
+        --muted-bg: #2d3748;
+        --muted-text: #cbd5e0;
+        --intro-bg: #1a2a3a;
+        --quote-bg: #1c2b22;
+        --green: #68d391;
+        --green-bg: #1c2b22;
+        --red: #fc8181;
+        --red-bg: #2d1f1f;
+        --orange: #f6ad55;
+        --orange-bg: #2b2418;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 24px 16px;
+      background-color: var(--bg);
+    }
+    h1 { color: var(--heading); border-bottom: 3px solid var(--accent); padding-bottom: 8px; }
+    h2 { color: var(--accent-dark); margin-top: 36px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    h3 { color: var(--accent-darker); margin-top: 24px; margin-bottom: 8px; }
+    nav.toc { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 20px; margin-bottom: 24px; }
+    nav.toc a { color: var(--accent-dark); }
+    .intro { font-size: 1.1em; background: var(--intro-bg); border-left: 4px solid var(--accent); padding: 16px; border-radius: 4px; margin-bottom: 24px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .badge { display: inline-block; background: var(--muted-bg); color: var(--muted-text); padding: 2px 8px; border-radius: 4px; font-size: 0.85em; font-weight: bold; margin-bottom: 8px; }
+    .quote { background: var(--quote-bg); border-left: 4px solid var(--green); padding: 10px 14px; margin: 10px 0; font-style: italic; }
+    .story-step { margin-bottom: 16px; padding-left: 12px; border-left: 3px solid var(--border-strong); }
+    .table-wrap { overflow-x: auto; }
+    .grid-table { width: 100%; border-collapse: collapse; margin: 16px 0; background: var(--surface); }
+    .grid-table th, .grid-table td { border: 1px solid var(--border-strong); padding: 10px 14px; text-align: left; }
+    .grid-table th { background: var(--muted-bg); }
+    .image-desc { background: var(--orange-bg); border-left: 4px solid var(--orange); padding: 14px 18px; margin-bottom: 18px; border-radius: 4px; }
+    .note { font-size: 0.95em; color: var(--muted-text); }
+
+    /* Quiz */
+    .quiz-q { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
+    .quiz-q .q-title { font-weight: bold; margin-bottom: 10px; }
+    .quiz-q .q-num { color: var(--accent-dark); margin-right: 6px; }
+    .options { display: grid; gap: 8px; }
+    .option {
+      display: block; width: 100%; text-align: left; font: inherit; color: var(--text);
+      background: var(--bg); border: 1px solid var(--border-strong); border-radius: 6px;
+      padding: 10px 14px; cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    .option:hover:not(:disabled) { border-color: var(--accent); }
+    .option:disabled { cursor: default; }
+    .option.correct { background: var(--green-bg); border-color: var(--green); font-weight: bold; }
+    .option.wrong { background: var(--red-bg); border-color: var(--red); }
+    .feedback { margin-top: 10px; padding: 10px 14px; border-radius: 6px; display: none; }
+    .feedback.show { display: block; }
+    .feedback.ok { background: var(--green-bg); border-left: 4px solid var(--green); }
+    .feedback.bad { background: var(--red-bg); border-left: 4px solid var(--red); }
+    .scorebar {
+      position: sticky; top: 0; z-index: 5; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 16px; margin: 16px 0; display: flex; flex-wrap: wrap;
+      gap: 12px; align-items: center; justify-content: space-between;
+    }
+    .progress { flex: 1 1 200px; height: 8px; background: var(--muted-bg); border-radius: 4px; overflow: hidden; }
+    .progress > div { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+    .btn {
+      font: inherit; background: var(--accent); color: #fff; border: none; border-radius: 6px;
+      padding: 8px 16px; cursor: pointer; font-weight: bold;
+    }
+    .btn.secondary { background: var(--muted-bg); color: var(--text); }
+    .result { display: none; text-align: center; font-size: 1.1em; }
+    .result.show { display: block; }
+    .match-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .match-row:last-of-type { border-bottom: none; }
+    .match-row.head { font-weight: bold; color: var(--muted-text); font-size: 0.9em; }
+    .match-row select { width: 100%; font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--bg); color: var(--text); }
+    .match-row select.correct { border-color: var(--green); background: var(--green-bg); }
+    .match-row select.wrong { border-color: var(--red); background: var(--red-bg); }
+    .legend { font-size: 0.9em; margin-top: 12px; }
+    @media (max-width: 560px) {
+      .match-row { grid-template-columns: 1fr 1fr; }
+      .match-row > :first-child { grid-column: 1 / -1; }
+      .match-row.head > :first-child { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Alles über Membranproteine: Verstehen, Merken &amp; Wiederholen</h1>
+
+  <nav class="toc">
+    <strong>Inhalt:</strong>
+    <a href="#aufgaben">1. Die 4 Aufgaben</a> ·
+    <a href="#loesungen">2. Buch-Lösungen</a> ·
+    <a href="#geschichte">3. Geschichte</a> ·
+    <a href="#begriffe">4. Fachbegriffe</a> ·
+    <a href="#faq">5. FAQ</a> ·
+    <a href="#bilder">Bildbeschreibungen</a> ·
+    <a href="#quiz"><strong>Quiz</strong></a>
+  </nav>
+
+  <div class="intro">
+    <p>Das Wort <strong>Membran</strong> kommt aus dem Lateinischen (<em>membrana</em>) und bedeutet übersetzt schlicht <strong>dünne Haut</strong> oder <strong>Häutchen</strong>.</p>
+    <p>Jede Zelle ist von so einer feinen Haut umgeben, die das Zellinnere schützt und wie eine Wand abgrenzt. Damit eine Zelle aber nicht komplett von der Außenwelt abgeschnitten ist, sitzen in dieser Haut viele winzige biologische Maschinen: Sie öffnen Tore, fangen Nachrichten ab oder prüfen Ausweise. In der Biologie nennt man solche aktiven Werkzeuge und Maschinen <strong>Proteine</strong> (Eiweiße). Weil diese Maschinen fest in der Zellhaut verankert sind, sprechen Biologen ganz einfach von <strong>Membranproteinen</strong> (also „Maschinen in der Zellhaut“).</p>
+  </div>
+
+  <h2 id="aufgaben">1. Die 4 Aufgaben der Membranproteine (im logischen Ablauf)</h2>
+  <p>In der Biologie greift ein Schritt in den nächsten: <strong>Erkennen &rarr; Signal empfangen &rarr; Einlassen &rarr; Verarbeiten</strong>.</p>
+
+  <div class="card">
+    <span class="badge">Schritt 1</span>
+    <h3>Zellerkennung (Zuckerketten / Glykoproteine)</h3>
+    <ul>
+      <li><strong>Aufgabe:</strong> Zuckerketten auf der Zelloberfläche dienen als Erkennungsmerkmal, damit der Körper eigene von fremden Zellen unterscheiden kann.</li>
+      <li><strong>Buch-Zuordnung:</strong> Abbildung <strong>d</strong> | Aufgabe <strong>(2)</strong> | Beispiel <strong>(6)</strong></li>
+      <li><strong>Konkretes Beispiel:</strong> Nach einer Bluttransfusion erkennt das Immunsystem über diese Ketten, ob die roten Blutzellen zum eigenen Körper passen.</li>
+      <li><strong>Eselsbrücke – „Der Schülerausweis am Schultor“:</strong> Die Zuckerkette ist der Schülerausweis der Zelle. Das Abwehrsystem scannt ihn kurz: <em>„Ausweis gültig – du gehörst zur Schule, geh weiter!“</em> Zeigt eine Zelle einen fremden Ausweis, schlägt der Körper Alarm.</li>
+    </ul>
+    <div class="quote">
+      <strong>Wiederholungssatz:</strong> „Zuckerketten auf Membranproteinen dienen als biologischer Personalausweis für die Zellerkennung.“
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="badge">Schritt 2</span>
+    <h3>Informationsempfang (Rezeptorproteine)</h3>
+    <ul>
+      <li><strong>Aufgabe:</strong> Rezeptorproteine nehmen gezielt Botenstoffe (wie Hormone) auf und lösen dadurch spezifische Reaktionen im Zellinneren aus.</li>
+      <li><strong>Buch-Zuordnung:</strong> Abbildung <strong>b</strong> | Aufgabe <strong>(1)</strong> | Beispiel <strong>(5)</strong></li>
+      <li><strong>Konkretes Beispiel:</strong> Das Hormon Insulin aus der Bauchspeicheldrüse bindet an Muskel- und Leberzellen und gibt das Startsignal, Zucker aus dem Blut aufzunehmen.</li>
+      <li><strong>Eselsbrücke – „Die Türklingel mit Code“:</strong> Der Bote (<em>Insulin</em>) geht nicht selbst ins Gebäude hinein. Er betätigt von außen die passende Klingel (<em>Rezeptor</em>). Nach dem Schlüssel-Schloss-Prinzip weiß die Zelle drinnen sofort: <em>„Tore aufschließen und Zucker hereinholen!“</em></li>
+    </ul>
+    <div class="quote">
+      <strong>Wiederholungssatz:</strong> „Rezeptorproteine empfangen Hormone wie eine Antenne und leiten den Arbeitsauftrag direkt ins Zellinnere weiter.“
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="badge">Schritt 3</span>
+    <h3>Stofftransport (Transportproteine / Tunnel)</h3>
+    <ul>
+      <li><strong>Aufgabe:</strong> Transportproteine bilden Schleusen durch die Membran und steuern, welche Stoffe in die Zelle hinein oder hinaus gelangen.</li>
+      <li><strong>Buch-Zuordnung:</strong> Abbildung <strong>c</strong> | Aufgabe <strong>(4)</strong> | Beispiel <strong>(7)</strong></li>
+      <li><strong>Konkretes Beispiel:</strong> Transportproteine schleusen Traubenzucker (Glucose) ins Zellinnere, damit die Zelle daraus Energie gewinnen kann.</li>
+      <li><strong>Eselsbrücke – „Die U-Bahn-Schranke“:</strong> Die dichte Zellhaut lässt den Zucker von alleine nicht durch. Erst wenn das Transportprotein auf Grün schaltet, öffnet sich der Kanal und lässt die Zuckermoleküle gezielt passieren.</li>
+    </ul>
+    <div class="quote">
+      <strong>Wiederholungssatz:</strong> „Transportproteine regeln als schaltbare Tunnel den Einlass wichtiger Nährstoffe in die Zelle.“
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="badge">Schritt 4</span>
+    <h3>Stoffverarbeitung (Enzyme)</h3>
+    <ul>
+      <li><strong>Aufgabe:</strong> Membrangebundene Enzyme treiben chemische Prozesse an, indem sie Stoffe zügig spalten oder zusammenbauen.</li>
+      <li><strong>Buch-Zuordnung:</strong> Abbildung <strong>a</strong> | Aufgabe <strong>(3)</strong> | Beispiel <strong>(8)</strong></li>
+      <li><strong>Konkretes Beispiel:</strong> An den inneren Membranen der Mitochondrien bauen Enzyme den Traubenzucker Schritt für Schritt bei der Zellatmung ab.</li>
+      <li><strong>Eselsbrücke – „Die Schere am Fließband“:</strong> Enzyme sind die Mechaniker der Zelle. Sie greifen sich ankommende Teile, zerlegen sie in Sekundenschnelle und sind danach sofort wieder bereit fürs nächste Molekül.</li>
+    </ul>
+    <div class="quote">
+      <strong>Wiederholungssatz:</strong> „Enzyme beschleunigen chemische Umwandlungen, wie den Abbau von Traubenzucker zur Energiegewinnung.“
+    </div>
+  </div>
+
+  <h2 id="loesungen">2. Buch-Lösungen auf einen Blick</h2>
+  <div class="table-wrap">
+    <table class="grid-table">
+      <thead>
+        <tr>
+          <th>Abbildung im Buch</th>
+          <th>Aufgabe (Kreis oben)</th>
+          <th>Beispiel (Kreis unten)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Bild a (Enzyme)</strong></td>
+          <td><strong>3</strong> (Reaktionen steuern / Stoffe verarbeiten)</td>
+          <td><strong>8</strong> (Traubenzucker-Spaltung bei der Zellatmung)</td>
+        </tr>
+        <tr>
+          <td><strong>Bild b (Rezeptorprotein)</strong></td>
+          <td><strong>1</strong> (Hormone binden / Signal geben)</td>
+          <td><strong>5</strong> (Insulin senkt den Blutzuckerspiegel)</td>
+        </tr>
+        <tr>
+          <td><strong>Bild c (Transportprotein)</strong></td>
+          <td><strong>4</strong> (Stoffaustausch regeln / Kanäle)</td>
+          <td><strong>7</strong> (Zuckermoleküle einschleusen)</td>
+        </tr>
+        <tr>
+          <td><strong>Bild d (Zuckerkette)</strong></td>
+          <td><strong>2</strong> (Erkennen: körpereigen / körperfremd)</td>
+          <td><strong>6</strong> (Bluttransfusion / Blutzellen)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="geschichte">3. Die Geschichte: Ein Tag an der Zell-Fabrik</h2>
+  <div class="card">
+    <div class="story-step">
+      <strong>1. Die Ausweiskontrolle (Zuckerketten):</strong><br>
+      Eine rote Blutzelle schwimmt heran. Die Wächter des Immunsystems prüfen ihre <strong>Zuckerkette</strong> auf der Membranoberfläche. Der Code stimmt: Die Blutzelle wird als körpereigen eingestuft und darf ungestört weiterarbeiten.
+    </div>
+    <div class="story-step">
+      <strong>2. Der Eilbote klingelt (Rezeptorprotein):</strong><br>
+      Nach dem Essen ist viel Traubenzucker im Blut. Die Bauchspeicheldrüse schickt den Boten <strong>Insulin</strong> los. Er wandert zur Muskel- oder Leberzelle und rastet wie ein Schlüssel passgenau im <strong>Rezeptor</strong> ein. Sein Befehl: <em>„Tore öffnen und Zucker aus dem Blut hereinholen!“</em>
+    </div>
+    <div class="story-step">
+      <strong>3. Die Laderampen öffnen sich (Transportprotein):</strong><br>
+      Durch diesen Impuls öffnen die <strong>Transportproteine</strong> ihre Tunnel. Der Traubenzucker strömt aus dem Blut direkt in die Zelle hinein. Der Blutzuckerspiegel sinkt wieder auf Normalniveau.
+    </div>
+    <div class="story-step">
+      <strong>4. Die Maschinen zerkleinern die Fracht (Enzyme):</strong><br>
+      Im Zellinneren gelangt der Zucker – in kleinere Stücke zerlegt – zum Kraftwerk, dem Mitochondrium. Dort greifen sich spezialisierte <strong>Enzyme</strong> an den Membranen die Bruchstücke, bauen sie weiter ab und setzen genau die Energie frei, die dein Körper zum Bewegen und Nachdenken braucht.
+    </div>
+  </div>
+
+  <h2 id="begriffe">4. Fachbegriffe verständlich erklärt</h2>
+  <ul>
+    <li>
+      <strong>Warum sagt man „Protein“ und nicht einfach „Molekül“?</strong><br>
+      <em>Molekül</em> ist lediglich der chemische Oberbegriff für zusammenhängende Atome – ein Tropfen Wasser besteht aus Wassermolekülen, ein Körnchen Traubenzucker aus Zuckermolekülen. Wenn man sich Atome wie Legosteine vorstellt, ist ein einfaches Molekül ein winziges Gebilde aus wenigen Steinen. Ein <strong>Protein</strong> dagegen ist ein komplexes Modell aus Tausenden Steinen mit funktionierenden Hebeln und Schaltern. Proteine sind die <strong>aktiven Werkzeuge und Maschinen</strong> des Körpers. Man sagt „Protein“, um klarzustellen: Hier geht es um eine hochspezialisierte Maschine und nicht um einfaches Baumaterial.
+    </li>
+    <li>
+      <strong>Was ist ein Hormon?</strong><br>
+      Ein chemischer <strong>Postbote des Körpers</strong>. Es wird in Drüsen produziert, fließt mit dem Blut durch den gesamten Kreislauf und überbringt Nachrichten an ganz bestimmte Zielzellen.
+    </li>
+    <li>
+      <strong>Was ist ein Rezeptorprotein?</strong><br>
+      Die <strong>Gegensprechanlage der Zelle</strong>. Es sitzt an der Außenwand und besitzt eine Aussparung, an die nur der passende Botenstoff nach dem Schlüssel-Schloss-Prinzip andocken kann.
+    </li>
+  </ul>
+
+  <h2 id="faq">5. FAQ: Häufige Fragen</h2>
+  <div class="card">
+    <p><strong>Was haben Mitochondrien mit Membranproteinen zu tun?</strong><br>
+    Mitochondrien sind die Kraftwerke der Zelle, die Traubenzucker zu Energie „verbrennen“ (Zellatmung). Damit das funktioniert, müssen zwei Arten von Membranproteinen mitspielen: Erstens schleusen <strong>Transportproteine</strong> den Zucker von außen in die Zelle (<strong>Beispiel 7</strong>), und zweitens bauen <strong>Enzyme</strong> den Zucker an den Membranen der Mitochondrien ab (<strong>Beispiel 8</strong>).</p>
+    <p class="note"><strong>Genauer betrachtet:</strong> Der Traubenzucker wird zuerst im Zellplasma in kleinere Bruchstücke gespalten. Erst diese Bruchstücke wandern in die Mitochondrien und werden dort fertig abgebaut. Für die Schulbuch-Aufgabe reicht die vereinfachte Fassung.</p>
+    <hr style="border:none; border-top:1px solid var(--border); margin: 12px 0;">
+    <p><strong>Wie greifen Insulin und Transportproteine ineinander?</strong><br>
+    Insulin dockt als Hormon von außen an das <strong>Rezeptorprotein</strong> an (<strong>Bild b / 5</strong>). Erst dieses Signal veranlasst die Zelle, ihre <strong>Transportkanäle</strong> für Traubenzucker freizuschalten (<strong>Bild c / 7</strong>). Dadurch verschwindet der Zucker aus dem Blutkreislauf und gelangt dorthin, wo er verarbeitet oder gespeichert wird.</p>
+  </div>
+
+  <h2 id="bilder">Anhang: Detaillierte Bildbeschreibungen der Schulbuch-Zeichnungen</h2>
+  <p>Hier siehst du ganz genau, woran du die vier Zeichnungen im Buch auf den ersten Blick erkennst:</p>
+
+  <div class="image-desc">
+    <h3>Abbildung a: Das Enzym-Duo (Stoffverarbeitung)</h3>
+    <p><strong>Was du im Bild siehst:</strong> Zwei dunkelgraue, unförmige Proteine sitzen nebeneinander in der gelben Membranschicht. An ihrer Oberfläche siehst du kleine geometrische Vertiefungen (wie kleine Dreiecke oder Quadrate). Pfeile zeigen, wie kleine geometrische Formen ankommen, dort hineingesteckt und verändert weitergegeben werden.</p>
+    <p><strong>Bedeutung für die Zelle:</strong> Das Bild zeigt ein <em>aktives Zentrum</em>. Stoffe docken an, werden chemisch umgebaut oder gespalten und verlassen das Enzym wieder. Das Enzym selbst bleibt unverändert an seinem Platz.</p>
+  </div>
+
+  <div class="image-desc">
+    <h3>Abbildung b: Das Schloss mit Schlüssel (Rezeptorprotein)</h3>
+    <p><strong>Was du im Bild siehst:</strong> Ein großes, bohnenförmiges Membranprotein ragt weit aus der gelben Membran nach oben heraus. An der Außenseite hat es eine ganz exakte, keilförmige Einkerbung. Direkt darüber siehst du ein passendes orangefarbenes Teilchen („Hormon“), das exakt in diese Kerbe hineinpasst wie ein Puzzleteil.</p>
+    <p><strong>Bedeutung für die Zelle:</strong> Das ist das <em>Schlüssel-Schloss-Prinzip</em>. Das Hormon schwimmt heran und klinkt sich passgenau ein. Es wandert nicht durch die Membran hindurch, sondern das Protein ändert durch den Kontakt leicht seine Form und meldet dem Zellinneren: <em>„Signal angekommen!“</em></p>
+  </div>
+
+  <div class="image-desc">
+    <h3>Abbildung c: Das geöffnete Schleusentor (Transportprotein)</h3>
+    <p><strong>Was du im Bild siehst:</strong> Zwei gebogene Proteinhälften bilden zusammen einen durchgehenden Tunnel oder Kanal mitten durch die gelbe Membran hindurch. Oben auf der Außenseite sieht man blaue Kügelchen („Zuckermoleküle“). Pfeile verdeutlichen, wie die Kügelchen durch die Mitte des Kanals direkt von oben nach unten (ins Zellinnere) wandern.</p>
+    <p><strong>Bedeutung für die Zelle:</strong> Das ist die <em>Tunnelröhre</em>. Da die dichte Fettmembran wasserlösliche Teilchen wie Zucker oder Salze abweist, bietet dieses Kanalprotein einen geschützten, offenen Durchgang.</p>
+  </div>
+
+  <div class="image-desc">
+    <h3>Abbildung d: Der Antennenmast mit Zuckerkette (Zellerkennung)</h3>
+    <p><strong>Was du im Bild siehst:</strong> Ein dunkelgraues Protein spannt sich durch die Membran. Oben ragt ein verzweigter Ast heraus, der aus mehreren aneinanderhängenden Ringen (Sechsecken) besteht. Diese Kette ist beschriftet mit „Zuckerkette auf einem Membranprotein“.</p>
+    <p><strong>Bedeutung für die Zelle:</strong> In der Chemie werden Ringe oft für Zuckermoleküle verwendet. Protein und Zuckerkette bilden zusammen ein sogenanntes <em>Glykoprotein</em>. Dieser baumartige Zucker-Zweig ragt auf der Zellaußenseite in die Umgebung und dient dem Abwehrsystem als Tast- und Erkennungsmuster.</p>
+  </div>
+
+  <!-- ===================== QUIZ ===================== -->
+  <h2 id="quiz">6. Quiz: Teste dein Wissen</h2>
+  <p>Teil A ist ein Multiple-Choice-Quiz: Klicke auf eine Antwort, du bekommst sofort eine Rückmeldung mit Erklärung. In Teil B ordnest du die Buch-Abbildungen den richtigen Zahlen zu.</p>
+
+  <h3>Teil A: Multiple Choice</h3>
+  <div class="scorebar" aria-live="polite">
+    <span id="score-text">0 von 0 beantwortet · 0 richtig</span>
+    <div class="progress" aria-hidden="true"><div id="progress-fill"></div></div>
+    <button class="btn secondary" id="quiz-reset" type="button">Neu mischen</button>
+  </div>
+  <div id="quiz"></div>
+  <div class="card result" id="quiz-result"></div>
+
+  <h3>Teil B: Buch-Zuordnung</h3>
+  <div class="card" id="match">
+    <div class="match-row head"><span>Abbildung</span><span>Aufgabe (oben)</span><span>Beispiel (unten)</span></div>
+  </div>
+  <div class="legend card">
+    <strong>Aufgaben:</strong> (1) Hormone binden / Signal geben · (2) Erkennen: körpereigen / körperfremd · (3) Reaktionen steuern / Stoffe verarbeiten · (4) Stoffaustausch regeln<br>
+    <strong>Beispiele:</strong> (5) Insulin senkt den Blutzuckerspiegel · (6) Bluttransfusion · (7) Zuckermoleküle einschleusen · (8) Traubenzucker-Spaltung bei der Zellatmung
+  </div>
+  <p>
+    <button class="btn" id="match-check" type="button">Zuordnung prüfen</button>
+    <button class="btn secondary" id="match-reset" type="button">Zurücksetzen</button>
+  </p>
+  <div class="feedback" id="match-feedback"></div>
+
+  <script>
+    const QUESTIONS = [
+      {
+        q: "Was bedeutet das Wort „Membran“ übersetzt?",
+        options: ["Dünne Haut / Häutchen", "Kleine Maschine", "Zellkern", "Bauplan"],
+        answer: 0,
+        explain: "Membran kommt vom lateinischen „membrana“ und heißt „dünne Haut“ oder „Häutchen“."
+      },
+      {
+        q: "In welcher Reihenfolge greifen die vier Aufgaben im logischen Ablauf ineinander?",
+        options: [
+          "Erkennen → Signal empfangen → Einlassen → Verarbeiten",
+          "Einlassen → Erkennen → Verarbeiten → Signal empfangen",
+          "Signal empfangen → Verarbeiten → Erkennen → Einlassen",
+          "Verarbeiten → Einlassen → Signal empfangen → Erkennen"
+        ],
+        answer: 0,
+        explain: "Erst wird die Zelle erkannt (Zuckerkette), dann kommt das Signal (Rezeptor), dann wird eingelassen (Transportprotein) und schließlich verarbeitet (Enzym)."
+      },
+      {
+        q: "Welche Struktur funktioniert wie ein „Schülerausweis“ der Zelle?",
+        options: ["Zuckerkette auf einem Membranprotein (Glykoprotein)", "Rezeptorprotein", "Transportprotein", "Enzym"],
+        answer: 0,
+        explain: "Zuckerketten auf der Zelloberfläche sind das Erkennungsmerkmal: Das Immunsystem erkennt daran, ob eine Zelle körpereigen oder fremd ist."
+      },
+      {
+        q: "Wozu ist das Erkennen über Zuckerketten bei einer Bluttransfusion wichtig?",
+        options: [
+          "Das Immunsystem prüft, ob die fremden Blutzellen zum eigenen Körper passen.",
+          "Die Zuckerketten liefern dem Blut zusätzliche Energie.",
+          "Die Zuckerketten senken den Blutzuckerspiegel.",
+          "Die Zuckerketten transportieren Sauerstoff in die Zelle."
+        ],
+        answer: 0,
+        explain: "Passen die Erkennungsmerkmale nicht, stuft das Immunsystem die Blutzellen als fremd ein und schlägt Alarm (Bild d / Beispiel 6)."
+      },
+      {
+        q: "An welches Membranprotein bindet das Hormon Insulin?",
+        options: ["Rezeptorprotein", "Transportprotein", "Enzym", "Zuckerkette"],
+        answer: 0,
+        explain: "Insulin dockt außen am Rezeptorprotein an – wie ein Schlüssel im passenden Schloss (Bild b / Beispiel 5)."
+      },
+      {
+        q: "Was macht das Insulin, nachdem es am Rezeptor angedockt hat?",
+        options: [
+          "Es bleibt außen; die Zelle bekommt das Signal und reagiert drinnen.",
+          "Es wandert selbst durch die Membran ins Zellinnere.",
+          "Es wird vom Rezeptor sofort in Traubenzucker umgewandelt.",
+          "Es verschließt alle Transportkanäle der Zelle."
+        ],
+        answer: 0,
+        explain: "Wie bei einer Türklingel: Der Bote geht nicht ins Haus. Der Rezeptor ändert seine Form leicht und meldet dem Zellinneren „Signal angekommen!“."
+      },
+      {
+        q: "Welches Prinzip zeigt Abbildung b (Hormon passt in eine Kerbe)?",
+        options: ["Schlüssel-Schloss-Prinzip", "Fließband-Prinzip", "Ausweis-Prinzip", "Schleusen-Prinzip"],
+        answer: 0,
+        explain: "Nur der passende Botenstoff passt genau in die Aussparung des Rezeptors – das ist das Schlüssel-Schloss-Prinzip."
+      },
+      {
+        q: "Warum braucht Traubenzucker ein Transportprotein, um in die Zelle zu gelangen?",
+        options: [
+          "Die fettige Membran weist wasserlösliche Teilchen wie Zucker ab.",
+          "Zucker ist zu schwer und würde sonst nach unten sinken.",
+          "Zucker darf nur nachts in die Zelle.",
+          "Ohne Transportprotein würde der Zucker sofort zu Insulin."
+        ],
+        answer: 0,
+        explain: "Die Membran ist eine dichte Fettschicht. Wasserlösliche Stoffe wie Zucker oder Salze kommen nur durch die „Tunnel“ der Transportproteine hindurch."
+      },
+      {
+        q: "Was passiert mit dem Blutzuckerspiegel, wenn die Transportproteine nach dem Insulin-Signal Zucker in die Zellen schleusen?",
+        options: ["Er sinkt.", "Er steigt.", "Er bleibt genau gleich.", "Er schwankt zufällig."],
+        answer: 0,
+        explain: "Der Zucker verlässt das Blut und wandert in die Zellen – deshalb sinkt der Blutzuckerspiegel wieder auf Normalniveau."
+      },
+      {
+        q: "Was passiert mit einem Enzym, nachdem es einen Stoff gespalten hat?",
+        options: [
+          "Es bleibt unverändert und ist sofort für das nächste Molekül bereit.",
+          "Es wird bei der Reaktion selbst verbraucht.",
+          "Es wandert aus der Zelle hinaus.",
+          "Es verwandelt sich in eine Zuckerkette."
+        ],
+        answer: 0,
+        explain: "Enzyme sind wie eine Schere am Fließband: Sie schneiden immer wieder, ohne sich dabei selbst zu verändern."
+      },
+      {
+        q: "Wo bauen membrangebundene Enzyme bei der Zellatmung Traubenzucker ab?",
+        options: ["An den inneren Membranen der Mitochondrien", "Im Zellkern", "An der Zuckerkette der Zelloberfläche", "In der Bauchspeicheldrüse"],
+        answer: 0,
+        explain: "Die Mitochondrien sind die Kraftwerke der Zelle. An ihren inneren Membranen sitzen die Enzyme der Zellatmung (Bild a / Beispiel 8)."
+      },
+      {
+        q: "Welche Abbildung im Buch zeigt einen durchgehenden Tunnel mit blauen Kügelchen?",
+        options: ["Abbildung c – Transportprotein", "Abbildung a – Enzyme", "Abbildung b – Rezeptorprotein", "Abbildung d – Zuckerkette"],
+        answer: 0,
+        explain: "Zwei Proteinhälften bilden einen Kanal; die blauen Kügelchen sind Zuckermoleküle, die hindurchwandern."
+      },
+      {
+        q: "Welche Zahlen gehören zu Abbildung a (Enzyme)?",
+        options: ["Aufgabe 3, Beispiel 8", "Aufgabe 1, Beispiel 5", "Aufgabe 4, Beispiel 7", "Aufgabe 2, Beispiel 6"],
+        answer: 0,
+        explain: "Bild a = Enzyme: Reaktionen steuern (3) und Traubenzucker-Spaltung bei der Zellatmung (8)."
+      },
+      {
+        q: "Warum sagt man „Protein“ und nicht einfach „Molekül“?",
+        options: [
+          "Ein Protein ist eine hochkomplexe, aktive Maschine aus Tausenden Bausteinen.",
+          "Proteine bestehen nicht aus Atomen.",
+          "„Molekül“ ist nur ein anderes Wort für Zucker.",
+          "Proteine kommen nur in der Membran vor."
+        ],
+        answer: 0,
+        explain: "Jedes Protein ist zwar auch ein Molekül – aber ein riesiges, spezialisiertes mit „Hebeln und Schaltern“, das aktiv Arbeit verrichtet."
+      },
+      {
+        q: "Was ist ein Hormon?",
+        options: [
+          "Ein chemischer Botenstoff, der mit dem Blut zu bestimmten Zielzellen reist",
+          "Ein Kanal in der Zellmembran",
+          "Ein Enzym, das Zucker spaltet",
+          "Ein Teil des Zellkerns"
+        ],
+        answer: 0,
+        explain: "Hormone sind die „Postboten des Körpers“: In Drüsen gebildet, im Blut verteilt, an Rezeptoren abgegeben."
+      }
+    ];
+
+    const quizEl = document.getElementById("quiz");
+    const scoreText = document.getElementById("score-text");
+    const progressFill = document.getElementById("progress-fill");
+    const resultEl = document.getElementById("quiz-result");
+    let answered = 0;
+    let correct = 0;
+
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function updateScore() {
+      scoreText.textContent = `${answered} von ${QUESTIONS.length} beantwortet · ${correct} richtig`;
+      progressFill.style.width = `${(answered / QUESTIONS.length) * 100}%`;
+      if (answered === QUESTIONS.length) {
+        const pct = Math.round((correct / QUESTIONS.length) * 100);
+        let msg;
+        if (pct === 100) msg = "Perfekt! Du beherrschst die Membranproteine.";
+        else if (pct >= 80) msg = "Sehr gut! Schau dir die falsch beantworteten Fragen noch einmal an.";
+        else if (pct >= 50) msg = "Solide Basis. Lies die Eselsbrücken in Abschnitt 1 nochmals und probiere es erneut.";
+        else msg = "Noch nicht ganz. Geh die Geschichte in Abschnitt 3 durch und versuche es dann noch einmal.";
+        resultEl.innerHTML = `<strong>Ergebnis: ${correct} von ${QUESTIONS.length} (${pct} %)</strong><br>${msg}`;
+        resultEl.classList.add("show");
+      }
+    }
+
+    function renderQuiz() {
+      quizEl.innerHTML = "";
+      answered = 0;
+      correct = 0;
+      resultEl.classList.remove("show");
+      shuffle(QUESTIONS).forEach((item, idx) => {
+        const box = document.createElement("div");
+        box.className = "quiz-q";
+
+        const title = document.createElement("div");
+        title.className = "q-title";
+        title.innerHTML = `<span class="q-num">${idx + 1}.</span>`;
+        title.appendChild(document.createTextNode(item.q));
+        box.appendChild(title);
+
+        const opts = document.createElement("div");
+        opts.className = "options";
+        const feedback = document.createElement("div");
+        feedback.className = "feedback";
+
+        const indexed = shuffle(item.options.map((text, i) => ({ text, i })));
+        const buttons = indexed.map(({ text, i }) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "option";
+          b.textContent = text;
+          b.dataset.correct = i === item.answer ? "1" : "0";
+          b.addEventListener("click", () => {
+            buttons.forEach(x => {
+              x.disabled = true;
+              if (x.dataset.correct === "1") x.classList.add("correct");
+            });
+            const ok = b.dataset.correct === "1";
+            if (!ok) b.classList.add("wrong");
+            answered++;
+            if (ok) correct++;
+            feedback.className = "feedback show " + (ok ? "ok" : "bad");
+            feedback.innerHTML = `<strong>${ok ? "Richtig!" : "Leider falsch."}</strong> `;
+            feedback.appendChild(document.createTextNode(item.explain));
+            updateScore();
+          });
+          opts.appendChild(b);
+          return b;
+        });
+
+        box.appendChild(opts);
+        box.appendChild(feedback);
+        quizEl.appendChild(box);
+      });
+      updateScore();
+    }
+
+    document.getElementById("quiz-reset").addEventListener("click", () => {
+      renderQuiz();
+      document.getElementById("quiz").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    renderQuiz();
+
+    // Teil B: Zuordnung
+    const MATCH = [
+      { label: "Bild a – Enzyme", task: "3", example: "8" },
+      { label: "Bild b – Rezeptorprotein", task: "1", example: "5" },
+      { label: "Bild c – Transportprotein", task: "4", example: "7" },
+      { label: "Bild d – Zuckerkette", task: "2", example: "6" }
+    ];
+    const matchEl = document.getElementById("match");
+    const matchFeedback = document.getElementById("match-feedback");
+    const selects = [];
+
+    function makeSelect(values, expected, aria) {
+      const s = document.createElement("select");
+      s.setAttribute("aria-label", aria);
+      s.innerHTML = `<option value="">– wählen –</option>` + values.map(v => `<option value="${v}">${v}</option>`).join("");
+      s.dataset.expected = expected;
+      s.addEventListener("change", () => s.classList.remove("correct", "wrong"));
+      selects.push(s);
+      return s;
+    }
+
+    MATCH.forEach(row => {
+      const r = document.createElement("div");
+      r.className = "match-row";
+      const l = document.createElement("strong");
+      l.textContent = row.label;
+      r.appendChild(l);
+      r.appendChild(makeSelect(["1", "2", "3", "4"], row.task, `${row.label}: Aufgabe`));
+      r.appendChild(makeSelect(["5", "6", "7", "8"], row.example, `${row.label}: Beispiel`));
+      matchEl.appendChild(r);
+    });
+
+    document.getElementById("match-check").addEventListener("click", () => {
+      let right = 0;
+      selects.forEach(s => {
+        s.classList.remove("correct", "wrong");
+        if (s.value === s.dataset.expected) { right++; s.classList.add("correct"); }
+        else s.classList.add("wrong");
+      });
+      const all = right === selects.length;
+      matchFeedback.className = "feedback show " + (all ? "ok" : "bad");
+      matchFeedback.innerHTML = all
+        ? "<strong>Alles richtig!</strong> Du kannst die Buch-Aufgabe vollständig lösen."
+        : `<strong>${right} von ${selects.length} richtig.</strong> Rot markierte Felder noch einmal überdenken – Tipp: Erkennen → Signal → Einlassen → Verarbeiten.`;
+    });
+
+    document.getElementById("match-reset").addEventListener("click", () => {
+      selects.forEach(s => { s.value = ""; s.classList.remove("correct", "wrong"); });
+      matchFeedback.className = "feedback";
+    });
+  </script>
+</body>
+</html>
