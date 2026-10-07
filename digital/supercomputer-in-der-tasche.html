@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Supercomputer in der Tasche</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  /* Layout: ein schmaler Hochkant-Feed wie in einer Video-App. Jeder Block ist ein „Screen“
+     mit eigener Lesezeit; oben läuft die Uhr. Dunkel zuerst, helles Thema gleichwertig. */
+  :root {
+    --bg: #0b0f1a;
+    --panel: #141a2b;
+    --panel-2: #1b2338;
+    --line: #2a3452;
+    --fg: #eef1f8;
+    --muted: #9ba6c2;
+    --copper: #f2a65a;      /* Leiterbahn-Kupfer: Zeit, Akzent */
+    --copper-ink: #1a1206;
+    --volt: #7cb0ff;        /* KI, Rechenleistung */
+    --good: #5fd39a;
+    --bad: #ff8080;
+    --shadow: 0 10px 30px rgba(0,0,0,.45);
+    --f-display: "Unbounded", "Arial Black", "Helvetica Neue", sans-serif;
+    --f-body: "Atkinson Hyperlegible", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --hdr: 66px;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f3f5fa; --panel: #ffffff; --panel-2: #eef1f8; --line: #d9dfec;
+      --fg: #121726; --muted: #56617c; --copper: #b45f17; --copper-ink: #ffffff;
+      --volt: #2b5fd0; --good: #1d8754; --bad: #c43b3b;
+      --shadow: 0 10px 30px rgba(20,30,60,.16);
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f3f5fa; --panel: #ffffff; --panel-2: #eef1f8; --line: #d9dfec;
+    --fg: #121726; --muted: #56617c; --copper: #b45f17; --copper-ink: #ffffff;
+    --volt: #2b5fd0; --good: #1d8754; --bad: #c43b3b;
+    --shadow: 0 10px 30px rgba(20,30,60,.16);
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-snap-type: y proximity; scroll-padding-top: calc(var(--hdr) + env(safe-area-inset-top, 0px)); }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--f-body);
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--volt); }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--volt); outline-offset: 2px; border-radius: 6px; }
+  h1, h2 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(1.9rem, 7.5vw, 2.7rem); line-height: 1.08; font-weight: 800; }
+  h2 { font-size: clamp(1.35rem, 5.2vw, 1.8rem); line-height: 1.15; font-weight: 800; }
+  p { margin: 0; }
+  .num, .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+  .muted { color: var(--muted); }
+  .small { font-size: .86rem; }
+
+  /* ---------- Kopfleiste mit Uhr ---------- */
+  .hdr {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .hdr-in {
+    max-width: 600px; margin: 0 auto; padding: 8px 16px 9px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 6px 14px; align-items: center;
+  }
+  .clock { display: flex; align-items: baseline; gap: 6px; }
+  .clock .num { font-size: 1.45rem; font-weight: 700; color: var(--copper); }
+  .lbl { font-size: .68rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 700; }
+  .remain { text-align: right; line-height: 1.15; }
+  .remain .num { font-size: 1rem; font-weight: 700; }
+  .segs { grid-column: 1 / -1; display: flex; gap: 3px; }
+  .segs i { flex: 1; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; position: relative; }
+  .segs i b { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--copper); }
+  .segs i.cur { background: color-mix(in srgb, var(--copper) 30%, var(--line)); }
+  .theme-btn {
+    border: 1px solid var(--line); background: var(--panel); border-radius: 999px;
+    padding: 2px 9px; font-size: .72rem; cursor: pointer; color: var(--muted); margin-top: 3px;
+  }
+
+  /* ---------- Feed ---------- */
+  .feed { max-width: 600px; margin: 0 auto; padding-inline: 16px; padding-block: 14px 60px; display: grid; gap: 18px; }
+  .reel {
+    scroll-snap-align: start;
+    min-height: calc(100svh - var(--hdr) - 32px - env(safe-area-inset-top, 0px));
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 18px 18px 14px;
+    display: flex; flex-direction: column; gap: 16px;
+    position: relative;
+    min-width: 0;
+  }
+  .reel > * { min-width: 0; }
+  .meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .eyebrow { font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; color: var(--volt); }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+    font-family: var(--f-mono); font-size: .78rem; font-weight: 700;
+    background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); white-space: nowrap;
+  }
+  .chip svg { width: 14px; height: 14px; flex: none; }
+  .chip.done { border-color: var(--good); color: var(--good); }
+  .chip.paused { border-color: var(--bad); color: var(--bad); }
+  .readbar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; margin-top: -8px; }
+  .readbar i { display: block; height: 100%; width: 0; background: var(--copper); }
+  .body { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+  .lead { font-size: 1.08rem; }
+  .takeaway {
+    border-left: 3px solid var(--copper); padding: 4px 0 4px 12px; font-weight: 700;
+  }
+  .actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--line); }
+  .save {
+    display: inline-flex; align-items: center; gap: 7px; background: none; border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 14px 6px 10px; cursor: pointer; font-weight: 700; font-size: .9rem;
+  }
+  .save svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; }
+  .save[aria-pressed="true"] { border-color: var(--copper); color: var(--copper); }
+  .save[aria-pressed="true"] svg { fill: currentColor; }
+  .next { background: none; border: 0; color: var(--muted); cursor: pointer; font-size: .9rem; display: inline-flex; gap: 6px; align-items: center; }
+  .next svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2.2; }
+
+  .btn {
+    border: 0; border-radius: 12px; padding: 11px 16px; font-weight: 700; cursor: pointer;
+    background: var(--copper); color: var(--copper-ink);
+  }
+  .btn.ghost { background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  /* ---------- Hook ---------- */
+  .hook h1 em { font-style: normal; color: var(--copper); }
+  .live {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px;
+    display: grid; gap: 4px;
+  }
+  .live .num { font-size: clamp(1.3rem, 6vw, 1.75rem); font-weight: 700; color: var(--volt); word-break: break-word; }
+  .swipe { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
+  .swipe svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; animation: bob 1.6s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(5px); } }
+
+  /* ---------- 1997 vs heute ---------- */
+  .versus { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .vs-card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 8px; align-content: start; }
+  .vs-card .year { font-family: var(--f-display); font-size: 1.05rem; font-weight: 800; }
+  .vs-card dl { margin: 0; display: grid; gap: 6px; font-size: .9rem; }
+  .vs-card dt { color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+  .vs-card dd { margin: 0; font-weight: 700; }
+  .scale { display: flex; align-items: flex-end; gap: 14px; height: 92px; }
+  .hall { width: 100%; max-width: 150px; height: 88px; border: 2px solid var(--muted); border-radius: 4px;
+    background: repeating-linear-gradient(90deg, transparent 0 9px, color-mix(in srgb, var(--muted) 45%, transparent) 9px 11px); }
+  .phone { width: 18px; height: 34px; border: 2px solid var(--copper); border-radius: 5px; background: color-mix(in srgb, var(--copper) 20%, transparent); }
+  @media (max-width: 420px) { .versus { grid-template-columns: 1fr; } }
+
+  /* ---------- Chart ---------- */
+  .chart-wrap { position: relative; }
+  .chart-wrap svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .chart-wrap .grid line { stroke: var(--line); stroke-width: 1; }
+  .chart-wrap .axis text, .chart-wrap .lab { fill: var(--muted); font-family: var(--f-mono); font-size: 13px; }
+  .chart-wrap .lab.strong { fill: var(--fg); font-weight: 700; }
+  .chart-wrap .ref { stroke: var(--copper); stroke-width: 2; stroke-dasharray: 6 5; }
+  .chart-wrap .ref-lab { fill: var(--copper); font-family: var(--f-mono); font-size: 13px; font-weight: 700; }
+  .chart-wrap .series { stroke: var(--volt); stroke-width: 2; fill: none; }
+  .chart-wrap .dot { fill: var(--volt); stroke: var(--panel); stroke-width: 2; }
+  .chart-wrap .dot.hl { fill: var(--panel); stroke: var(--volt); stroke-width: 2.5; }
+  .chart-wrap .hit { fill: transparent; cursor: pointer; }
+  .tip {
+    position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); border-radius: 10px;
+    padding: 7px 10px; font-size: .8rem; line-height: 1.3; transform: translate(-50%, calc(-100% - 12px));
+    white-space: nowrap; box-shadow: var(--shadow);
+  }
+  .tip b { font-family: var(--f-mono); }
+  details.table { font-size: .88rem; }
+  details.table summary { cursor: pointer; color: var(--muted); }
+  .tbl-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); }
+  td.r, th.r { text-align: right; font-family: var(--f-mono); }
+
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .fact { background: var(--panel-2); border-radius: 14px; padding: 12px; border: 1px solid var(--line); }
+  .fact .num { font-size: 1.35rem; font-weight: 700; color: var(--copper); display: block; }
+
+  /* ---------- Faktor-Balken ---------- */
+  .bars { display: grid; gap: 12px; }
+  .bar-row { display: grid; gap: 4px; }
+  .bar-top { display: flex; justify-content: space-between; gap: 10px; font-size: .9rem; flex-wrap: wrap; }
+  .bar-top b { font-family: var(--f-mono); }
+  .bar { height: 12px; border-radius: 0 4px 4px 0; background: var(--panel-2); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--volt); border-radius: 0 4px 4px 0; }
+  .bar.new i { background: repeating-linear-gradient(135deg, var(--copper) 0 6px, transparent 6px 10px); }
+
+  /* ---------- Tabs Lernen/Welt/Bauen ---------- */
+  .tabs { display: flex; gap: 6px; background: var(--panel-2); padding: 4px; border-radius: 14px; border: 1px solid var(--line); }
+  .tabs button { flex: 1; border: 0; background: none; padding: 9px 6px; border-radius: 10px; cursor: pointer; font-weight: 700; color: var(--muted); }
+  .tabs button[aria-selected="true"] { background: var(--panel); color: var(--fg); box-shadow: 0 1px 0 var(--line); }
+  .compare { display: grid; gap: 10px; }
+  .then, .now { border-radius: 14px; padding: 12px 14px; border: 1px solid var(--line); }
+  .then { background: transparent; }
+  .now { background: var(--panel-2); border-color: color-mix(in srgb, var(--volt) 45%, var(--line)); }
+  .then .lbl, .now .lbl { display: block; margin-bottom: 4px; }
+  .now .lbl { color: var(--volt); }
+  .prompt {
+    font-family: var(--f-mono); font-size: .84rem; background: var(--bg); border: 1px dashed var(--line);
+    border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px;
+  }
+  .prompt button { justify-self: start; }
+  .copy { background: none; border: 1px solid var(--line); border-radius: 8px; padding: 3px 10px; cursor: pointer; font-family: var(--f-body); font-size: .8rem; color: var(--muted); }
+
+  /* ---------- Agent ---------- */
+  .loop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: .8rem; }
+  .loop span { padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); font-weight: 700; color: var(--muted); transition: background .2s, color .2s; }
+  .loop span.on { background: var(--volt); color: var(--bg); border-color: var(--volt); }
+  .loop i { color: var(--muted); font-style: normal; }
+  .log { display: grid; gap: 8px; min-height: 60px; }
+  .log-item { display: grid; grid-template-columns: 88px 1fr; gap: 10px; font-size: .92rem; align-items: start; animation: rise .35s ease both; }
+  .log-item .k { font-family: var(--f-mono); font-size: .7rem; font-weight: 700; padding: 3px 6px; border-radius: 6px; text-align: center; background: var(--panel-2); border: 1px solid var(--line); }
+  .log-item.check .k, .log-item.fix .k { color: var(--copper); border-color: var(--copper); }
+  .log-item.result .k { color: var(--good); border-color: var(--good); }
+  .log-item.single { grid-template-columns: 1fr; background: var(--panel-2); padding: 10px 12px; border-radius: 12px; }
+  @keyframes rise { from { transform: translateY(6px); opacity: .2; } }
+
+  /* ---------- Flickwerk ---------- */
+  .board { position: relative; height: 330px; border: 1px dashed var(--line); border-radius: 16px; background: var(--bg); }
+  .board.ordered { height: auto; border-style: solid; display: grid; gap: 0; padding: 4px 0; }
+  .slot { display: grid; grid-template-columns: 96px 1fr; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); align-items: start; }
+  .slot:last-child { border-bottom: 0; }
+  .slot > .lbl { padding-top: 6px; color: var(--copper); }
+  .slot .chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  .frag {
+    font-size: .8rem; line-height: 1.25; padding: 6px 9px; border-radius: 10px; background: var(--panel);
+    border: 1px solid var(--line); max-width: 46%; box-shadow: var(--shadow);
+  }
+  .board:not(.ordered) .frag { position: absolute; }
+  .board.ordered .frag { position: static; max-width: 100%; box-shadow: none; transform: none !important; }
+  .frag small { display: block; font-family: var(--f-mono); font-size: .64rem; color: var(--volt); text-transform: uppercase; letter-spacing: .06em; }
+  .frag.q { border-color: var(--copper); font-weight: 700; }
+  @media (max-width: 420px) { .slot { grid-template-columns: 1fr; gap: 4px; } }
+  .checklist { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+  .evidence { font-size: .88rem; background: var(--panel-2); border-radius: 14px; padding: 12px 14px; border: 1px solid var(--line); display: grid; gap: 6px; }
+  .evidence .lbl { color: var(--volt); }
+
+  /* ---------- Karriere ---------- */
+  .ages { display: flex; justify-content: space-between; gap: 4px; }
+  .ages button { flex: 1; border: 1px solid var(--line); background: var(--panel-2); border-radius: 10px; padding: 7px 0; cursor: pointer; font-family: var(--f-mono); font-weight: 700; color: var(--muted); }
+  .ages button[aria-pressed="true"] { background: var(--copper); color: var(--copper-ink); border-color: var(--copper); }
+  .paths { display: grid; gap: 10px; }
+  .path { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; }
+  .path h3 { margin: 0; font-size: .95rem; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .meter { display: flex; gap: 3px; }
+  .meter i { width: 14px; height: 6px; border-radius: 2px; background: var(--line); }
+  .meter i.on { background: var(--volt); }
+  .path.best { border-color: color-mix(in srgb, var(--volt) 55%, var(--line)); background: var(--panel-2); }
+  .tagline { font-size: .75rem; color: var(--muted); font-weight: 400; }
+
+  /* ---------- Quiz ---------- */
+  .quiz { display: grid; gap: 12px; }
+  .qtimer { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .qtimer i { display: block; height: 100%; width: 100%; background: var(--copper); transform-origin: left; }
+  .qhead { display: flex; justify-content: space-between; gap: 10px; font-family: var(--f-mono); font-size: .82rem; color: var(--muted); }
+  .qtext { font-weight: 700; font-size: 1.05rem; }
+  .opts { display: grid; gap: 8px; }
+  .opt { text-align: left; border: 1px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 11px 13px; cursor: pointer; }
+  .opt:hover:not(:disabled) { border-color: var(--volt); }
+  .opt:disabled { cursor: default; }
+  .opt.ok { border-color: var(--good); background: color-mix(in srgb, var(--good) 16%, var(--panel-2)); font-weight: 700; }
+  .opt.no { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, var(--panel-2)); }
+  .qfb { font-size: .92rem; border-left: 3px solid var(--line); padding-left: 10px; }
+  .qfb.ok { border-color: var(--good); } .qfb.no { border-color: var(--bad); }
+  .qscore { text-align: center; display: grid; gap: 8px; justify-items: center; }
+  .qscore .num { font-size: 2.4rem; font-weight: 700; color: var(--copper); }
+
+  /* ---------- Bilanz ---------- */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 10px; }
+  .stat .num { display: block; font-size: 1.3rem; font-weight: 700; }
+  .stat.lost .num { color: var(--bad); }
+  @media (max-width: 420px) { .stats { grid-template-columns: 1fr 1fr; } }
+  .savelist { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+
+  /* ---------- Test-Benachrichtigung ---------- */
+  .notif {
+    position: fixed; z-index: 50; left: 50%; top: 0; width: min(420px, calc(100% - 24px));
+    transform: translate(-50%, -130%); transition: transform .35s cubic-bezier(.2,.9,.3,1.2);
+    margin-top: calc(env(safe-area-inset-top, 0px) + 10px);
+    background: color-mix(in srgb, var(--panel) 94%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 12px 14px;
+  }
+  .notif.show { transform: translate(-50%, 0); }
+  .notif-main { display: grid; grid-template-columns: 38px 1fr; gap: 10px; align-items: center; cursor: pointer; background: none; border: 0; text-align: left; width: 100%; padding: 0; }
+  .appicon { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; font-family: var(--f-display); font-weight: 800; font-size: .9rem; color: #fff; }
+  .notif-top { display: flex; justify-content: space-between; font-size: .72rem; color: var(--muted); }
+  .notif-title { font-weight: 700; font-size: .92rem; }
+  .notif-text { font-size: .86rem; color: var(--muted); }
+  .reveal { display: grid; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: .9rem; }
+  .reveal .lbl { color: var(--copper); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hdr" aria-label="Zeitanzeige">
+  <div class="hdr-in">
+    <div>
+      <div class="lbl">Deine Zeit hier</div>
+      <div class="clock"><span class="num" id="clock">00:00</span></div>
+    </div>
+    <div></div>
+    <div class="remain">
+      <div class="lbl">Noch zu lesen</div>
+      <div class="num" id="remain">–</div>
+    </div>
+    <div class="segs" id="segs" aria-hidden="true"></div>
+  </div>
+</header>
+
+<main class="feed" id="feed">
+
+  <!-- 0 · Hook -->
+  <section class="reel hook" id="start" data-take="Mein Smartphone ist schneller als der schnellste Computer der Welt von 1997.">
+    <div class="meta"><span class="eyebrow">Jede Sekunde zählt</span></div>
+    <div class="body">
+      <h1>Du trägst einen <em>Supercomputer</em> in der Tasche.</h1>
+      <p class="lead">Du musst dir das hier anschauen. Also machen wir es kurz und ehrlich: Oben läuft deine Uhr. Jeder Block sagt dir vorher, wie viele Sekunden er kostet. Rechts oben siehst du, wie viel Lesezeit noch übrig ist.</p>
+      <div class="live">
+        <span class="lbl">Seit du hier bist, schafft der KI-Chip eines aktuellen Smartphones bis zu</span>
+        <span class="num" id="ops">0 Rechenschritte</span>
+        <span class="small muted">Rechnung: 35 Billionen Operationen pro Sekunde (Apple A17 Pro, Herstellerangabe) × deine Sekunden.</span>
+      </div>
+      <p>Die Generation deiner Eltern hatte mit 14 ein Handy, das telefonieren, SMS schreiben und Snake spielen konnte. Du hast ein Gerät, das sehen, übersetzen, erklären und programmieren hilft. Die Frage ist nur: Wofür verwendest du es?</p>
+      <p class="takeaway">Mein Smartphone ist schneller als der schnellste Computer der Welt von 1997.</p>
+    </div>
+    <div class="actions">
+      <span class="swipe"><svg viewBox="0 0 24 24"><path d="M12 4v15M6 13l6 6 6-6"/></svg> Wisch nach oben</span>
+    </div>
+  </section>
+
+  <!-- 1 · 1997 vs heute -->
+  <section class="reel" data-take="1997 brauchte 1 Teraflops eine Halle und 40 Millionen Dollar. Heute passt mehr in meine Hosentasche.">
+    <div class="meta"><span class="eyebrow">Damals gegen jetzt</span></div>
+    <div class="body">
+      <h2>1997 war das hier der schnellste Computer der Welt.</h2>
+      <div class="versus">
+        <div class="vs-card">
+          <span class="year">ASCI Red · 1997</span>
+          <div class="scale" aria-hidden="true"><div class="hall"></div></div>
+          <dl>
+            <div><dt>Leistung</dt><dd class="num">≈ 1 Teraflops</dd></div>
+            <div><dt>Größe</dt><dd>füllte eine Halle mit über 100 Schränken</dd></div>
+            <div><dt>Preis</dt><dd>über 40 Mio. US-Dollar</dd></div>
+            <div><dt>Strom</dt><dd>so viel wie Hunderte Haushalte</dd></div>
+          </dl>
+        </div>
+        <div class="vs-card">
+          <span class="year">Smartphone · heute</span>
+          <div class="scale" aria-hidden="true"><div class="phone"></div></div>
+          <dl>
+            <div><dt>Leistung (Grafikchip)</dt><dd class="num">≈ 2 Teraflops</dd></div>
+            <div><dt>Größe</dt><dd>passt in die Hosentasche</dd></div>
+            <div><dt>Preis</dt><dd>ca. 1.000 Euro</dd></div>
+            <div><dt>Strom</dt><dd>ein kleiner Akku</dd></div>
+          </dl>
+        </div>
+      </div>
+      <p class="small muted">Teraflops = Billionen Rechenschritte mit Kommazahlen pro Sekunde. Der Vergleich ist eine Größenordnung: Supercomputer rechnen mit doppelter Genauigkeit, Handy-Grafikchips meist mit einfacher. Der Handy-Wert ist eine Schätzung, Hersteller veröffentlichen ihn selten.</p>
+      <p class="takeaway">1997 brauchte 1 Teraflops eine Halle und 40 Millionen Dollar. Heute passt mehr in meine Hosentasche.</p>
+    </div>
+    <div class="actions"></div>
+  </section>
+
+  <!-- 2 · Chart -->
+  <section class="reel" data-take="Von 2006 bis 2024 wurde der schnellste Computer der Welt rund 6.200-mal schneller.">
+    <div class="meta"><span class="eyebrow">Zwanzig Jahre im Zeitraffer</span></div>
+    <div class="body">
+      <h2>Jedes Jahr ein neuer Rekord</h2>
+      <p>Die Linie zeigt den jeweils schnellsten Supercomputer der Welt. Jede Stufe nach oben bedeutet <strong>zehnmal</strong> so schnell. Die gestrichelte Linie ist dein Handy.</p>
+      <div class="chart-wrap" id="chart"></div>
+      <details class="table">
+        <summary>Als Tabelle anzeigen</summary>
+        <div class="tbl-wrap"><table id="chart-table"><thead><tr><th>Jahr</th><th>Rechner</th><th class="r">Teraflops</th></tr></thead><tbody></tbody></table></div>
+      </details>
+      <div class="facts">
+        <div class="fact"><span class="num">× 6.200</span>schneller von 2006 bis 2024</div>
+        <div class="fact"><span class="num">1 h 43 min</span>Rechenzeit 2006 schrumpft auf 1 Sekunde</div>
+      </div>
+      <p class="small muted">Quelle: TOP500-Liste (jeweils Platz 1, Linpack-Messung).</p>
+      <p class="takeaway">Von 2006 bis 2024 wurde der schnellste Computer der Welt rund 6.200-mal schneller.</p>
+    </div>
+    <div class="actions"></div>
+  </section>
+
+  <!-- 3 · Handy 2007 vs 2023 -->
+  <section class="reel" data-take="Das Handy von 2007 hatte keinen KI-Chip. Meines rechnet 35 Billionen KI-Schritte pro Sekunde.">
+    <div class="meta"><span class="eyebrow">Dein Handy gegen das erste iPhone</span></div>
+    <div class="body">
+      <h2>2007 gegen 2023: um wie viel besser?</h2>
+      <p>Erstes iPhone (2007) gegen iPhone 15 Pro (2023). Ein längerer Balken heißt: viel mehr. Jede Markierung ist wieder Faktor 10.</p>
+      <div class="bars" id="bars"></div>
+      <p class="small muted">Herstellerangaben; Mobilfunk als typische Größenordnung (EDGE gegen 5G). Bei anderen Marken sind die Werte ähnlich.</p>
+      <p class="takeaway">Das Handy von 2007 hatte keinen KI-Chip. Meines rechnet 35 Billionen KI-Schritte pro Sekunde.</p>
+    </div>
+    <div class="actions"></div>
+  </section>
+
+  <!-- 4 · Was vorher keiner konnte -->
+  <section class="reel" data-take="Mit KI kann ich lernen, die Welt verstehen und Ideen bauen, wie es vor mir keine Generation konnte.">
+    <div class="meta"><span class="eyebrow">Was vor dir keiner konnte</span></div>
+    <div class="body">
+      <h2>Drei Superkräfte, die deine Eltern mit 14 nicht hatten</h2>
+      <div class="tabs" role="tablist" id="tabs">
+        <button role="tab" aria-selected="true" data-tab="0" id="tab-0">Lernen</button>
+        <button role="tab" aria-selected="false" data-tab="1" id="tab-1">Welt verstehen</button>
+        <button role="tab" aria-selected="false" data-tab="2" id="tab-2">Ideen bauen</button>
+      </div>
+      <div id="tabpanel" role="tabpanel" class="compare" aria-live="polite"></div>
+      <p class="takeaway">Mit KI kann ich lernen, die Welt verstehen und Ideen bauen, wie es vor mir keine Generation konnte.</p>
+    </div>
+    <div class="actions"></div>
+  </section>
+
+  <!-- 5 · Prompt vs Agent -->
+  <section class="reel" data-take="Ein Prompt gibt eine Antwort. Ein Agent plant, nutzt Werkzeuge, prüft und korrigiert sich. Ich bin die Chefin oder der Chef.">
+    <div class="meta"><span class="eyebrow">Mehr als ein Prompt</span></div>
+    <div class="body">
+      <h2>Frage stellen oder Agenten losschicken?</h2>
+      <p>Die Aufgabe: <strong>„Lohnt sich eine Solaranlage auf unserem Schuldach?“</strong> Probier beide Wege aus.</p>
+      <div class="row">
+        <button class="btn ghost" id="btn-prompt" type="button">Einzelner Prompt</button>
+        <button class="btn" id="btn-agent" type="button">Agenten losschicken</button>
+      </div>
+      <div class="loop" id="loop" aria-hidden="true">
+        <span data-k="goal">Ziel</span><i>→</i><span data-k="plan">Plan</span><i>→</i><span data-k="tool">Werkzeug</span><i>→</i><span data-k="check">Prüfen</span><i>↺</i><span data-k="result">Ergebnis</span>
+      </div>
+      <div class="log" id="log" aria-live="polite">
+        <p class="small muted">Tipp auf einen der beiden Knöpfe.</p>
+      </div>
+      <p>Ein Agent ist eine KI, die ein Ziel in Schritte zerlegt, selbst Werkzeuge verwendet (Suche, Karten, Taschenrechner, Code), ihre Zwischenergebnisse prüft und sich korrigiert. <strong>Deine Aufgabe ändert sich:</strong> Du tippst nicht mehr nur Fragen. Du setzt Ziele, prüfst Schritte und trägst die Verantwortung für das Ergebnis.</p>
+      <p class="takeaway">Ein Prompt gibt eine Antwort. Ein Agent plant, nutzt Werkzeuge, prüft und korrigiert sich. Ich bin die Chefin oder der Chef.</p>
+    </div>
+    <div class="actions"></div>
+  </section>
+
+  <!-- 6 · Flickwerk zu Struktur -->
+  <section class="reel" data-take="KI liefert Bruchstücke aus allen Fächern. Verstehen heißt: Ich baue das Gerüst selbst und kann es ohne Bildschirm erklären.">
+    <div class="meta"><span class="eyebrow">Vom Flickwerk zum Verstehen</span></div>
+    <div class="body">
+      <h2>KI liefert Puzzleteile. Das Bild baust du.</h2>
+      <p>Für die Solar-Frage braucht man Physik, Mathe, Wirtschaft, Geografie, Technik und Politik. Die KI wirft dir alles in Sekunden hin. Genau so sieht das dann aus:</p>
+      <div class="board" id="board"></div>
+      <div class="row">
+        <button class="btn" id="btn-order" type="button">Gerüst bauen</button>
+      </div>
+      <div class="evidence">
+        <span class="lbl">Was Forschung dazu zeigt</span>
+        <p>In einer Studie mit fast 1.000 Gymnasiast:innen in der Türkei (Bastani u. a., 2024) lösten Schüler:innen mit normalem ChatGPT Übungsaufgaben um <strong>48 %</strong> besser. Bei der Prüfung ohne KI schnitten sie aber <strong>17 % schlechter</strong> ab als die Gruppe ganz ohne KI. Eine KI-Version, die nur Hinweise statt Lösungen gab, hatte diesen Schaden nicht.</p>
+      </div>
+      <p><strong>Fünf Fragen für dein Gerüst:</strong></p>
+      <ol class="checklist">
+        <li>Was ist eigentlich die Frage?</li>
+        <li>Welche Begriffe muss ich selbst erklären können?</li>
+        <li>Wie hängt A mit B zusammen, und warum?</li>
+        <li>Woran würde ich merken, dass die KI falsch liegt?</li>
+        <li>Kann ich es jemandem ohne Bildschirm erklären?</li>
+      </ol>
+      <p class="takeaway">KI liefert Bruchstücke aus allen Fächern. Verstehen heißt: Ich baue das Gerüst selbst und kann es ohne Bildschirm erklären.</p>
+    </div>
+    <div class="actions"></div>
+  </section>
+
+  <!-- 7 · Karriere -->
+  <section class="reel" data-take="KI ersetzt selten Menschen, die verstehen. Sie ersetzt Menschen, die nur weiterreichen.">
+    <div class="meta"><span class="eyebrow">Drei Wege, ein Jahrgang</span></div>
+    <div class="body">
+      <h2>Drei Jugendliche, gleiches Talent. Was wird aus ihnen?</h2>
+      <p>Wähle ein Alter. Das ist ein Szenario zum Nachdenken, keine Vorhersage.</p>
+      <div class="ages" id="ages" role="group" aria-label="Alter wählen"></div>
+      <div class="paths" id="paths" aria-live="polite"></div>
+      <div class="evidence">
+        <span class="lbl">Was Studien heute schon messen</span>
+        <p><strong>Kundenservice, 5.000 Beschäftigte</strong> (Brynjolfsson u. a., 2023): Mit KI-Assistenz +14 % erledigte Anfragen pro Stunde, bei Neulingen sogar +34 %.</p>
+        <p><strong>Beratungsfirma, 758 Beschäftigte</strong> (Dell’Acqua u. a., 2023): Bei Aufgaben, die KI gut kann, 25 % schneller und über 40 % bessere Qualität. Bei einer Aufgabe außerhalb ihrer Stärken lagen KI-Nutzer:innen um 19 Prozentpunkte häufiger falsch, weil sie ihr blind vertrauten.</p>
+        <p>Es gibt Berufe, in denen KI wenig verändert, etwa in Pflege oder Handwerk. Aber auch dort planen Elektriker:innen mit Software und Pflegekräfte dokumentieren mit Sprachassistenz.</p>
+      </div>
+      <p class="takeaway">KI ersetzt selten Menschen, die verstehen. Sie ersetzt Menschen, die nur weiterreichen.</p>
+    </div>
+    <div class="actions"></div>
+  </section>
+
+  <!-- 8 · Quiz -->
+  <section class="reel" id="quiz-reel" data-rt="90" data-take="Ich habe das Quiz unter Zeitdruck gespielt.">
+    <div class="meta"><span class="eyebrow">Quiz · 20 Sekunden pro Frage</span></div>
+    <div class="body">
+      <h2>Schnelltest</h2>
+      <div class="quiz" id="quiz"></div>
+    </div>
+    <div class="actions"></div>
+  </section>
+
+  <!-- 9 · Bilanz -->
+  <section class="reel" id="bilanz" data-rt="25" data-take="Meine nächsten 60 Sekunden mit KI: eine Frage stellen, die mich wirklich weiterbringt.">
+    <div class="meta"><span class="eyebrow">Deine Bilanz</span></div>
+    <div class="body">
+      <h2>Das hat dich diese Seite gekostet</h2>
+      <div class="stats">
+        <div class="stat"><span class="num" id="st-total">0:00</span><span class="small muted">Zeit gesamt</span></div>
+        <div class="stat"><span class="num" id="st-read">0 / 9</span><span class="small muted">Blöcke gelesen</span></div>
+        <div class="stat lost"><span class="num" id="st-lost">0 s</span><span class="small muted">an Test-Nachrichten verloren</span></div>
+      </div>
+      <div>
+        <p><strong>Deine Merkliste</strong></p>
+        <ul class="savelist" id="savelist"><li class="muted">Noch leer. Tipp bei einem Block auf „Merken“.</li></ul>
+      </div>
+      <p><strong>Deine nächsten 60 Sekunden.</strong> Kopier einen dieser Starts in eine KI deiner Wahl:</p>
+      <div class="prompt"><span>Ich lerne gerade [Thema]. Erklär es mir nicht. Stell mir Fragen, bis ich selbst draufkomme, und sag mir am Ende, was ich noch nicht verstanden habe.</span><button class="copy" type="button">Kopieren</button></div>
+      <div class="prompt"><span>Zeig mir, wie [Fach A] und [Fach B] zusammenhängen. Gib mir 3 Beispiele aus meinem Alltag und eine Frage, mit der ich prüfen kann, ob ich es verstanden habe.</span><button class="copy" type="button">Kopieren</button></div>
+      <div class="prompt"><span>Ich habe eine Idee: [Idee]. Hilf mir, einen ersten Prototyp in 1 Stunde zu bauen. Plane zuerst die Schritte und frag mich, bevor du weitermachst.</span><button class="copy" type="button">Kopieren</button></div>
+      <p>Welcher Beruf passt zu dir, und was macht KI dort? <a href="https://claude.ai/artifact/UYBmACdtpxWeCNMWMkwaEk" target="_blank" rel="noopener">Weiter zur Berufe-Expedition Gipfelwerk</a></p>
+      <p class="takeaway">Meine nächsten 60 Sekunden mit KI: eine Frage stellen, die mich wirklich weiterbringt.</p>
+    </div>
+    <div class="actions"></div>
+  </section>
+
+  <p class="small muted" style="text-align:center">
+    Die Benachrichtigungen auf dieser Seite sind Tests. <button class="copy" id="notif-toggle" type="button">Test-Nachrichten ausschalten</button>
+    <button class="theme-btn" id="theme-btn" type="button">Hell/Dunkel</button>
+  </p>
+</main>
+
+<div class="notif" id="notif" role="status" aria-live="polite" hidden></div>
+
+<script>
+(() => {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const fmtTime = s => { s = Math.max(0, Math.round(s)); return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
+  const fmtShort = s => { s = Math.max(0, Math.round(s)); return s < 60 ? `${s} s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} min`; };
+  const nf = new Intl.NumberFormat("de-AT", { maximumFractionDigits: 1 });
+
+  const ICON_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>';
+  const ICON_SAVE = '<svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg>';
+  const ICON_DOWN = '<svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+
+  /* ---------- Blöcke vorbereiten ---------- */
+  const reels = $$(".reel");
+  const WPS = 3; // ~180 Wörter pro Minute
+  const state = reels.map((el, i) => {
+    let rt = Number(el.dataset.rt);
+    if (!rt) {
+      const words = ($(".body", el).innerText || "").split(/\s+/).filter(Boolean).length;
+      rt = Math.max(6, Math.round(words / WPS));
+    }
+    return { el, i, rt, readMs: 0, done: false, saved: false };
+  });
+
+  const segs = $("#segs");
+  state.forEach(s => {
+    const seg = document.createElement("i");
+    seg.innerHTML = "<b></b>";
+    segs.appendChild(seg);
+    s.seg = seg;
+
+    const meta = $(".meta", s.el);
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.innerHTML = `${ICON_CLOCK}<span>≈ ${fmtShort(s.rt)} Lesezeit</span>`;
+    meta.appendChild(chip);
+    s.chip = chip;
+
+    const bar = document.createElement("div");
+    bar.className = "readbar";
+    bar.innerHTML = "<i></i>";
+    meta.after(bar);
+    s.bar = $("i", bar);
+
+    const actions = $(".actions", s.el);
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "save";
+    save.setAttribute("aria-pressed", "false");
+    save.innerHTML = `${ICON_SAVE}<span>Merken</span>`;
+    save.addEventListener("click", () => {
+      s.saved = !s.saved;
+      save.setAttribute("aria-pressed", String(s.saved));
+      $("span", save).textContent = s.saved ? "Gemerkt" : "Merken";
+      renderSaved();
+    });
+    actions.prepend(save);
+    if (s.i < state.length - 1 && !$(".swipe", actions)) {
+      const nx = document.createElement("button");
+      nx.type = "button";
+      nx.className = "next";
+      nx.innerHTML = `Nächster Block ${ICON_DOWN}`;
+      nx.addEventListener("click", () => state[s.i + 1].el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" }));
+      actions.appendChild(nx);
+    }
+  });
+
+  function renderSaved() {
+    const list = $("#savelist");
+    const saved = state.filter(s => s.saved);
+    list.innerHTML = "";
+    if (!saved.length) { list.innerHTML = '<li class="muted">Noch leer. Tipp bei einem Block auf „Merken“.</li>'; return; }
+    saved.forEach(s => { const li = document.createElement("li"); li.textContent = s.el.dataset.take; list.appendChild(li); });
+  }
+
+  /* ---------- Sichtbarer Block ---------- */
+  let current = 0;
+  const ratios = new Map();
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => ratios.set(e.target, e.intersectionRatio));
+    let best = -1, bestR = 0;
+    state.forEach(s => { const r = ratios.get(s.el) || 0; if (r > bestR) { bestR = r; best = s.i; } });
+    if (best >= 0) current = best;
+  }, { threshold: [0, .15, .3, .45, .6, .75, .9] });
+  state.forEach(s => io.observe(s.el));
+
+  /* ---------- Uhr ---------- */
+  let visibleMs = 0, last = performance.now(), paused = false, quizActive = false;
+  const OPS = 35e12;
+  function bigNumber(n) {
+    const units = [[1e21, "Trilliarden"], [1e18, "Trillionen"], [1e15, "Billiarden"], [1e12, "Billionen"]];
+    for (const [v, w] of units) if (n >= v) return `${nf.format(n / v)} ${w}`;
+    return nf.format(n);
+  }
+  function tick(now) {
+    const dt = Math.min(now - last, 1000);
+    last = now;
+    if (!document.hidden) {
+      visibleMs += dt;
+      const s = state[current];
+      if (s && !paused && !s.done) {
+        s.readMs += dt;
+        if (s.readMs >= s.rt * 1000) {
+          s.done = true;
+          s.chip.classList.add("done");
+          s.chip.innerHTML = `${ICON_CLOCK}<span>gelesen · ${fmtShort(s.rt)}</span>`;
+        }
+      }
+    }
+    const sec = visibleMs / 1000;
+    $("#clock").textContent = fmtTime(sec);
+    $("#ops").textContent = `${bigNumber(OPS * sec)} Rechenschritte`;
+    let remain = 0;
+    state.forEach(s => {
+      const p = Math.min(1, s.readMs / (s.rt * 1000));
+      remain += s.rt * (1 - p);
+      s.bar.style.width = `${p * 100}%`;
+      $("b", s.seg).style.width = `${p * 100}%`;
+      s.seg.classList.toggle("cur", s.i === current);
+      if (!s.done) {
+        s.chip.classList.toggle("paused", paused && s.i === current);
+        const label = paused && s.i === current ? "pausiert: Ablenkung" : `≈ ${fmtShort(s.rt)} Lesezeit`;
+        const span = $("span", s.chip);
+        if (span.textContent !== label) span.textContent = label;
+      }
+    });
+    $("#remain").textContent = remain < 1 ? "fertig" : fmtTime(remain);
+    $("#st-total").textContent = fmtTime(sec).replace(/^0/, "");
+    $("#st-read").textContent = `${state.filter(s => s.done).length} / ${state.length}`;
+    $("#st-lost").textContent = fmtShort(lostMs / 1000);
+    checkNotif(sec);
+    requestAnimationFrame(tick);
+  }
+
+  /* ---------- Test-Benachrichtigungen ---------- */
+  const NOTIFS = [
+    { at: 25, app: "Klassenchat", color: "#2f9e5b", ic: "KC", title: "12 neue Nachrichten", text: "Leonie: habt ihr DAS schon gesehen???",
+      why: "Ungelesene Zahlen erzeugen das Gefühl, etwas zu verpassen. Apps zeigen sie absichtlich groß und rot." },
+    { at: 80, app: "Streak", color: "#e0662b", ic: "ST", title: "Deine Serie endet in 2 Stunden!", text: "Du hast 87 Tage geschafft. Nicht jetzt aufhören.",
+      why: "Serien belohnen nicht, was du tust, sondern nur, dass du zurückkommst. Verlust fühlt sich stärker an als Gewinn; darauf baut der Trick." },
+    { at: 150, app: "Für dich", color: "#7a4fd6", ic: "FD", title: "Dieses Video hat 4,2 Mio. Likes", text: "Nur 9 Sekunden. Du wirst es nicht glauben.",
+      why: "Kurze Videos versprechen wenig Zeit. Der Feed danach ist aber endlos. Die App verdient an deiner Zeit, nicht an deinem Wissen." }
+  ];
+  let notifOn = true, nextNotif = 0, notifShownAt = 0, lostMs = 0, notifTimer = null;
+  const notifEl = $("#notif");
+  function checkNotif(sec) {
+    if (!notifOn || paused || quizActive || nextNotif >= NOTIFS.length) return;
+    if (sec >= NOTIFS[nextNotif].at) showNotif(NOTIFS[nextNotif++]);
+  }
+  function showNotif(n) {
+    paused = true;
+    notifShownAt = performance.now();
+    notifEl.hidden = false;
+    notifEl.innerHTML = `
+      <button class="notif-main" type="button">
+        <span class="appicon" style="background:${n.color}">${n.ic}</span>
+        <span><span class="notif-top"><span>${n.app}</span><span>jetzt</span></span>
+        <span class="notif-title" style="display:block">${n.title}</span>
+        <span class="notif-text" style="display:block">${n.text}</span></span>
+      </button>`;
+    requestAnimationFrame(() => requestAnimationFrame(() => notifEl.classList.add("show")));
+    $(".notif-main", notifEl).addEventListener("click", () => reveal(n, true), { once: true });
+    notifTimer = setTimeout(() => reveal(n, false), 7000);
+  }
+  function reveal(n, tapped) {
+    clearTimeout(notifTimer);
+    const secs = Math.round((performance.now() - notifShownAt) / 1000);
+    const box = document.createElement("div");
+    box.className = "reveal";
+    box.innerHTML = `<span class="lbl">${tapped ? "Erwischt. Das war ein Test." : "Ignoriert. Stark. Das war ein Test."}</span>
+      <p>${tapped ? `Du hast nach ${secs} Sekunden draufgetippt.` : "Du hast weitergelesen."} Während die Nachricht da war, stand dein Lesefortschritt still. ${n.why}</p>
+      <div class="row"><button class="btn" type="button">Weiterlesen</button><button class="copy" type="button">Keine Tests mehr</button></div>`;
+    notifEl.appendChild(box);
+    const [goOn, stop] = $$("button", box).slice(-2);
+    goOn.addEventListener("click", closeNotif);
+    stop.addEventListener("click", () => { setNotifOn(false); closeNotif(); });
+    goOn.focus({ preventScroll: true });
+  }
+  function closeNotif() {
+    lostMs += performance.now() - notifShownAt;
+    notifEl.classList.remove("show");
+    setTimeout(() => { notifEl.hidden = true; notifEl.innerHTML = ""; }, reduce ? 0 : 350);
+    paused = false;
+  }
+  function setNotifOn(on) {
+    notifOn = on;
+    $("#notif-toggle").textContent = on ? "Test-Nachrichten ausschalten" : "Test-Nachrichten einschalten";
+  }
+  $("#notif-toggle").addEventListener("click", () => setNotifOn(!notifOn));
+
+  /* ---------- Theme ---------- */
+  $("#theme-btn").addEventListener("click", () => {
+    const root = document.documentElement;
+    const isDark = root.dataset.theme ? root.dataset.theme === "dark" : !matchMedia("(prefers-color-scheme: light)").matches;
+    root.dataset.theme = isDark ? "light" : "dark";
+  });
+
+  /* ---------- Chart: TOP500 Platz 1 ---------- */
+  const TOP = [
+    [1997, "ASCI Red", 1.068], [2000, "ASCI White", 4.938], [2002, "Earth Simulator", 35.86],
+    [2004, "BlueGene/L", 70.72], [2006, "BlueGene/L", 280.6], [2008, "Roadrunner", 1026],
+    [2010, "Tianhe-1A", 2566], [2011, "K computer", 10510], [2013, "Tianhe-2", 33863],
+    [2016, "Sunway TaihuLight", 93015], [2018, "Summit", 143500], [2020, "Fugaku", 442010],
+    [2022, "Frontier", 1102000], [2024, "El Capitan", 1742000]
+  ];
+  const PHONE = 2;
+  (function drawChart() {
+    const W = 440, H = 300, m = { l: 88, r: 10, t: 22, b: 30 };
+    const x = y => m.l + (y - 1996) / (2025 - 1996) * (W - m.l - m.r);
+    const y = v => H - m.b - (Math.log10(v) / 7) * (H - m.t - m.b);
+    const fmtTF = v => v >= 1e6 ? `${nf.format(v / 1e6)} Exaflops` : v >= 1e3 ? `${nf.format(v / 1e3)} Petaflops` : `${nf.format(v)} Teraflops`;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Logarithmisches Liniendiagramm: schnellster Supercomputer von 1997 mit 1 Teraflops bis 2024 mit 1,7 Exaflops; ein heutiges Smartphone liegt bei etwa 2 Teraflops, also auf dem Niveau von 1997 bis 2000.">`;
+    s += `<g class="grid">`;
+    for (let d = 0; d <= 7; d++) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(10 ** d)}" y2="${y(10 ** d)}" />`;
+    s += `</g><g class="axis">`;
+    [[0, "1 Teraflops"], [3, "1 Petaflops"], [6, "1 Exaflops"]].forEach(([d, t]) => s += `<text x="${m.l - 8}" y="${y(10 ** d) + 4}" text-anchor="end">${t}</text>`);
+    [2000, 2008, 2016, 2024].forEach(yr => s += `<text x="${x(yr)}" y="${H - 8}" text-anchor="middle">${yr}</text>`);
+    s += `</g>`;
+    s += `<line class="ref" x1="${m.l}" x2="${W - m.r}" y1="${y(PHONE)}" y2="${y(PHONE)}" />`;
+    s += `<text class="ref-lab" x="${W - m.r}" y="${y(PHONE) - 8}" text-anchor="end">Dein Handy ≈ 2 Teraflops</text>`;
+    s += `<polyline class="series" points="${TOP.map(d => `${x(d[0])},${y(d[2])}`).join(" ")}" />`;
+    TOP.forEach((d, i) => {
+      const hl = d[0] === 2006;
+      s += `<circle class="dot${hl ? " hl" : ""}" cx="${x(d[0])}" cy="${y(d[2])}" r="${hl ? 5.5 : 4}" />`;
+    });
+    const lab = (d, dx, dy, anchor) => `<text class="lab strong" x="${x(d[0]) + dx}" y="${y(d[2]) + dy}" text-anchor="${anchor}">${d[1]} ${d[0]}</text>`;
+    s += lab(TOP[4], 10, 16, "start") + lab(TOP[TOP.length - 1], -10, -10, "end");
+    TOP.forEach((d, i) => s += `<circle class="hit" data-i="${i}" cx="${x(d[0])}" cy="${y(d[2])}" r="14" tabindex="0" />`);
+    s += `</svg><div class="tip" hidden></div>`;
+    const wrap = $("#chart");
+    wrap.innerHTML = s;
+    const tip = $(".tip", wrap), svg = $("svg", wrap);
+    const show = el => {
+      const d = TOP[el.dataset.i];
+      const r = svg.getBoundingClientRect(), wr = wrap.getBoundingClientRect(), sc = r.width / W;
+      tip.innerHTML = `${d[1]} · ${d[0]}<br><b>${fmtTF(d[2])}</b>`;
+      tip.hidden = false;
+      const left = Math.min(Math.max(x(d[0]) * sc + (r.left - wr.left), 70), wr.width - 70);
+      tip.style.left = `${left}px`;
+      tip.style.top = `${y(d[2]) * sc + (r.top - wr.top)}px`;
+    };
+    $$(".hit", wrap).forEach(h => {
+      h.addEventListener("pointerenter", () => show(h));
+      h.addEventListener("click", () => show(h));
+      h.addEventListener("focus", () => show(h));
+      h.addEventListener("pointerleave", () => tip.hidden = true);
+      h.addEventListener("blur", () => tip.hidden = true);
+    });
+    const tb = $("#chart-table tbody");
+    TOP.forEach(d => { const tr = document.createElement("tr"); tr.innerHTML = `<td>${d[0]}</td><td>${d[1]}</td><td class="r">${nf.format(d[2])}</td>`; tb.appendChild(tr); });
+  })();
+
+  /* ---------- Faktor-Balken ---------- */
+  const BARS = [
+    { k: "Arbeitsspeicher", a: "128 MB", b: "8 GB", f: 64 },
+    { k: "Speicherplatz (max.)", a: "16 GB", b: "1 TB", f: 64 },
+    { k: "Kamera", a: "2 Megapixel", b: "48 Megapixel", f: 24 },
+    { k: "Mobiles Internet", a: "≈ 0,2 Mbit/s", b: "≈ 200+ Mbit/s", f: 1000 },
+    { k: "KI-Chip", a: "keiner", b: "35 Billionen Op./s", f: null }
+  ];
+  const maxLog = Math.log10(1000);
+  $("#bars").innerHTML = BARS.map(r => `
+    <div class="bar-row">
+      <div class="bar-top"><span>${r.k}: ${r.a} → ${r.b}</span><b>${r.f ? "× " + nf.format(r.f) : "neu"}</b></div>
+      <div class="bar${r.f ? "" : " new"}"><i style="width:${r.f ? Math.max(6, Math.log10(r.f) / maxLog * 100) : 100}%"></i></div>
+    </div>`).join("");
+
+  /* ---------- Tabs ---------- */
+  const TABS = [
+    { then: "21 Uhr, Mathe-Hausübung, du steckst fest. Eltern wissen es nicht mehr, die Lehrerin siehst du erst übermorgen. Du schreibst ab oder gibst auf.",
+      now: "Eine KI erklärt dir die Aufgabe auf deinem Niveau, so oft du willst, ohne zu seufzen. Gut eingestellt, verrät sie die Lösung nicht, sondern fragt so lange nach, bis du selbst draufkommst.",
+      prompt: "Erklär mir lineare Funktionen, aber verrate mir keine Lösung. Stell mir Fragen, bis ich selbst draufkomme." },
+    { then: "Ein Käfer im Garten, ein Artikel über Inflation, ein Video auf Japanisch: Ohne Bestimmungsbuch, Lexikon oder Dolmetscher bleibt es ein Rätsel.",
+      now: "Foto machen, und die KI bestimmt den Käfer. Den Zeitungsartikel erklärt sie dir wie einer 13-Jährigen. Das japanische Video übersetzt sie live. Die ganze Welt wird lesbar.",
+      prompt: "Hier ist ein Artikel über Inflation. Erklär ihn mir so, dass ich ihn mit 13 verstehe, und stell mir danach 3 Kontrollfragen." },
+    { then: "Du hast eine Idee für ein Spiel oder eine App. Dafür brauchst du Monate Programmierkurs, ein Team oder Geld. Die Idee stirbt im Heft.",
+      now: "An einem Nachmittag baust du mit KI einen spielbaren Prototyp, ein Logo und eine kleine Umfrage. Du lernst Programmieren, während du baust, wenn du dir jeden Teil erklären lässt.",
+      prompt: "Ich will ein Spiel bauen, bei dem man Mülltrennung lernt. Hilf mir, es Schritt für Schritt als Webseite zu bauen, und erklär mir jeden Codeteil." }
+  ];
+  function renderTab(i) {
+    $$("#tabs button").forEach(b => b.setAttribute("aria-selected", String(Number(b.dataset.tab) === i)));
+    const t = TABS[i];
+    $("#tabpanel").innerHTML = `
+      <div class="then"><span class="lbl">2006, ohne KI</span><p>${t.then}</p></div>
+      <div class="now"><span class="lbl">Heute, mit KI</span><p>${t.now}</p></div>
+      <div class="prompt"><span>${t.prompt}</span><button class="copy" type="button">Kopieren</button></div>`;
+    bindCopy($("#tabpanel"));
+  }
+  $$("#tabs button").forEach(b => b.addEventListener("click", () => renderTab(Number(b.dataset.tab))));
+
+  /* ---------- Kopieren ---------- */
+  function bindCopy(root) {
+    $$(".copy", root).forEach(btn => {
+      if (btn.id || btn.dataset.bound) return;
+      btn.dataset.bound = "1";
+      btn.addEventListener("click", () => {
+        const span = btn.previousElementSibling;
+        const text = span.textContent;
+        const ok = () => { btn.textContent = "Kopiert"; setTimeout(() => btn.textContent = "Kopieren", 1600); };
+        const fallback = () => { const r = document.createRange(); r.selectNodeContents(span); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); btn.textContent = "Markiert, jetzt kopieren"; };
+        try { navigator.clipboard.writeText(text).then(ok, fallback); } catch (e) { fallback(); }
+      });
+    });
+  }
+  renderTab(0);
+  bindCopy($("#bilanz"));
+
+  /* ---------- Agent-Simulation ---------- */
+  const STEPS = [
+    ["goal", "ZIEL", "Wirtschaftlichkeit einer Solaranlage auf dem Schuldach abschätzen.", ""],
+    ["plan", "PLAN", "Dachfläche bestimmen → Sonnenertrag abschätzen → Kosten und Ersparnis rechnen → Risiken auflisten.", ""],
+    ["tool", "KARTE", "Luftbild ausgewertet: Dach rund 600 m², davon etwa 400 m² nutzbar.", ""],
+    ["tool", "SONNENDATEN", "EU-Werkzeug PVGIS: rund 1.050 kWh Strom pro kWp und Jahr an diesem Ort.", ""],
+    ["tool", "CODE", "400 m² ≈ 80 kWp → etwa 84.000 kWh pro Jahr.", ""],
+    ["check", "PRÜFEN", "Widerspruch: Im Sommer sind Ferien, die Schule braucht dann kaum Strom. Nur ca. 45 % werden selbst verbraucht.", "check"],
+    ["plan", "KORREKTUR", "Neu rechnen: Eigenverbrauch × Strompreis plus geringere Vergütung für eingespeisten Strom.", "fix"],
+    ["result", "ERGEBNIS", "Rechnet sich voraussichtlich in 9 bis 13 Jahren. Offen für Menschen: Trägt das Dach das Gewicht? Welche Förderung gilt gerade? Was will die Schulgemeinschaft?", "result"]
+  ];
+  let agentRun = 0;
+  function setLoop(k) { $$("#loop span").forEach(s => s.classList.toggle("on", s.dataset.k === k)); }
+  $("#btn-prompt").addEventListener("click", () => {
+    agentRun++; setLoop(null);
+    $("#log").innerHTML = `<div class="log-item single"><p>„Solaranlagen lohnen sich in Österreich meistens, weil es viel Sonne gibt und Strom teuer ist. Es kommt aber auf viele Faktoren an.“</p><p class="small muted">Klingt richtig, hilft aber kaum: keine Zahlen für dein Dach, keine Prüfung, keine offenen Fragen.</p></div>`;
+  });
+  $("#btn-agent").addEventListener("click", async () => {
+    const run = ++agentRun;
+    const log = $("#log");
+    log.innerHTML = "";
+    for (const [k, label, text, cls] of STEPS) {
+      if (run !== agentRun) return;
+      setLoop(k);
+      const it = document.createElement("div");
+      it.className = `log-item ${cls}`;
+      it.innerHTML = `<span class="k">${label}</span><span></span>`;
+      it.lastChild.textContent = text;
+      log.appendChild(it);
+      await new Promise(r => setTimeout(r, reduce ? 0 : 1100));
+    }
+    if (run === agentRun) setTimeout(() => setLoop(null), 1200);
+  });
+
+  /* ---------- Flickwerk → Gerüst ---------- */
+  const SLOTS = ["Frage", "Begriffe", "Zahlen", "Zusammenhang", "Prüfen"];
+  const FRAGS = [
+    { d: "Frage", t: "Lohnt sich Solar auf dem Schuldach?", s: 0, q: true, x: 30, y: 44, r: -2 },
+    { d: "Physik", t: "Licht löst in Silizium Elektronen", s: 1, x: 3, y: 4, r: -4 },
+    { d: "Technik", t: "Wechselrichter macht aus Gleichstrom Wechselstrom", s: 1, x: 52, y: 10, r: 3 },
+    { d: "Geografie", t: "Österreich: ca. 1.000 kWh pro kWp und Jahr", s: 2, x: 2, y: 64, r: 2 },
+    { d: "Mathe", t: "Prozentrechnung: Anteil Eigenverbrauch", s: 2, x: 52, y: 58, r: -3 },
+    { d: "Wirtschaft", t: "Amortisation = Kosten ÷ Ersparnis pro Jahr", s: 3, x: 6, y: 34, r: 3 },
+    { d: "Wirtschaft", t: "Strompreis bestimmt die Ersparnis", s: 3, x: 52, y: 34, r: -2 },
+    { d: "Politik", t: "Förderungen ändern sich jedes Jahr", s: 4, x: 4, y: 84, r: -2 },
+    { d: "Bautechnik", t: "Trägt das Dach das Gewicht?", s: 4, x: 52, y: 82, r: 4 }
+  ];
+  const board = $("#board");
+  const fragEls = FRAGS.map(f => {
+    const el = document.createElement("div");
+    el.className = "frag" + (f.q ? " q" : "");
+    el.innerHTML = `<small>${f.d}</small><span></span>`;
+    el.lastChild.textContent = f.t;
+    return el;
+  });
+  let ordered = false;
+  function layoutChaos() {
+    board.classList.remove("ordered");
+    board.innerHTML = "";
+    FRAGS.forEach((f, i) => {
+      const el = fragEls[i];
+      el.style.left = f.x + "%";
+      el.style.top = `calc(${f.y}% - ${f.y * 0.5}px)`;
+      el.style.transform = `rotate(${f.r}deg)`;
+      board.appendChild(el);
+    });
+  }
+  function layoutOrder() {
+    board.classList.add("ordered");
+    board.innerHTML = "";
+    SLOTS.forEach((name, si) => {
+      const row = document.createElement("div");
+      row.className = "slot";
+      row.innerHTML = `<span class="lbl">${name}</span><div class="chips"></div>`;
+      FRAGS.forEach((f, i) => { if (f.s === si) { fragEls[i].style.left = fragEls[i].style.top = ""; row.lastChild.appendChild(fragEls[i]); } });
+      board.appendChild(row);
+    });
+  }
+  function flip(change) {
+    const first = fragEls.map(el => el.getBoundingClientRect());
+    change();
+    if (reduce) return;
+    fragEls.forEach((el, i) => {
+      const last = el.getBoundingClientRect();
+      const dx = first[i].left - last.left, dy = first[i].top - last.top;
+      el.animate([{ translate: `${dx}px ${dy}px` }, { translate: "0 0" }], { duration: 650, easing: "cubic-bezier(.2,.8,.2,1)", delay: i * 35, fill: "backwards" });
+    });
+  }
+  layoutChaos();
+  $("#btn-order").addEventListener("click", () => {
+    ordered = !ordered;
+    flip(ordered ? layoutOrder : layoutChaos);
+    $("#btn-order").textContent = ordered ? "Wieder durcheinander" : "Gerüst bauen";
+  });
+
+  /* ---------- Karriere ---------- */
+  const AGES = [14, 17, 20, 25, 30];
+  const PATHS = [
+    { name: "Ohne KI", tag: "lernt wie früher", lv: [2, 2, 2, 2, 2],
+      t: ["Lernt gründlich, aber langsam. Recherche dauert Stunden, Fehler fallen erst bei der Schularbeit auf.",
+          "Solide Noten, aber bei Projekten und Referaten deutlich langsamer als andere.",
+          "Erster Job: Kolleg:innen liefern Entwürfe in der halben Zeit.",
+          "Muss KI-Werkzeuge nachlernen, weil sie im Betrieb Standard sind. Holt auf, aber spät.",
+          "Stark, wo Hände und direkter Kontakt zählen. Bei Wissensarbeit unter Druck."] },
+    { name: "KI als Abkürzung", tag: "lässt die KI denken", lv: [3, 2, 2, 1, 1],
+      t: ["Hausübungen in fünf Minuten fertig, Noten bei Hausübungen top.",
+          "Bei Schularbeiten ohne Handy große Lücken. Die Studie von oben lässt grüßen.",
+          "Kann Texte erzeugen, aber nicht beurteilen, ob sie stimmen.",
+          "Übersieht Fehler der KI, bis es teuer wird. Leicht ersetzbar, denn die KI braucht keine Zwischenperson.",
+          "Eine Tätigkeit, die nur aus Weiterreichen besteht, fällt weg."] },
+    { name: "KI als Werkzeug + eigenes Verständnis", tag: "lässt sich von der KI fordern", lv: [2, 3, 4, 5, 5], best: true,
+      t: ["Lässt sich von der KI abfragen statt Lösungen zu kopieren. Erklärt alles in eigenen Worten.",
+          "Baut erste eigene Projekte: eine App, ein Video, eine kleine Forschungsfrage.",
+          "Verbindet zwei Fächer, etwa Biologie und Daten. Schickt Agenten für Recherche los und prüft sie.",
+          "Steuert mehrere Agenten, erkennt ihre Fehler und trägt Verantwortung.",
+          "Gefragt dort, wo Fachwissen, Urteilskraft und KI zusammenkommen."] }
+  ];
+  let ageIdx = 0;
+  $("#ages").innerHTML = AGES.map((a, i) => `<button type="button" aria-pressed="${i === 0}" data-i="${i}">${a}</button>`).join("");
+  function renderPaths() {
+    $$("#ages button").forEach(b => b.setAttribute("aria-pressed", String(Number(b.dataset.i) === ageIdx)));
+    $("#paths").innerHTML = PATHS.map(p => `
+      <div class="path${p.best ? " best" : ""}">
+        <h3><span>${p.name} <span class="tagline">· ${p.tag}</span></span>
+          <span class="meter" aria-label="Möglichkeiten ${p.lv[ageIdx]} von 5">${[1,2,3,4,5].map(n => `<i class="${n <= p.lv[ageIdx] ? "on" : ""}"></i>`).join("")}</span></h3>
+        <p>Mit ${AGES[ageIdx]}: ${p.t[ageIdx]}</p>
+      </div>`).join("");
+  }
+  $$("#ages button").forEach(b => b.addEventListener("click", () => { ageIdx = Number(b.dataset.i); renderPaths(); }));
+  renderPaths();
+
+  /* ---------- Quiz ---------- */
+  const QUIZ = [
+    { q: "Der schnellste Computer der Welt 1997 schaffte etwa 1 Teraflops. Wie viel schafft der Grafikchip eines aktuellen Spitzen-Handys ungefähr?",
+      o: ["Etwa 2 Teraflops", "Etwa 0,001 Teraflops", "Etwa 1.000 Teraflops", "Gleich viel wie ein Taschenrechner"], a: 0,
+      e: "Rund 2 Teraflops: Größenordnung des Weltrekords von 1997 bis 2000, in deiner Hosentasche." },
+    { q: "Um wie viel wurde der schnellste Supercomputer zwischen 2006 und 2024 schneller?",
+      o: ["Rund 6.200-mal", "Rund 10-mal", "Rund 60-mal", "Gar nicht"], a: 0,
+      e: "Von 280 Teraflops (BlueGene/L) auf 1,7 Exaflops (El Capitan). Was 2006 1 h 43 min dauerte, geht heute in 1 Sekunde." },
+    { q: "Was unterscheidet einen KI-Agenten von einem einzelnen Prompt?",
+      o: ["Er plant Schritte, nutzt Werkzeuge, prüft und korrigiert sich", "Er tippt schneller", "Er hat immer recht", "Er braucht kein Internet"], a: 0,
+      e: "Ein Agent arbeitet in einer Schleife aus Plan, Werkzeug und Prüfung. Recht hat er deshalb noch lange nicht immer." },
+    { q: "Schüler:innen übten Mathe mit normalem ChatGPT. Wie schnitten sie danach bei der Prüfung ohne KI ab?",
+      o: ["17 % schlechter als ohne KI", "48 % besser", "Genau gleich", "Sie durften nicht teilnehmen"], a: 0,
+      e: "Beim Üben waren sie besser, bei der Prüfung schlechter. Die KI hatte für sie gedacht. Eine Version mit Hinweisen statt Lösungen schadete nicht." },
+    { q: "Welcher Auftrag an eine KI hilft dir beim Lernen am meisten?",
+      o: ["„Stell mir Fragen, bis ich selbst draufkomme.“", "„Schreib meine Hausübung.“", "„Gib mir nur die Lösung.“", "„Fass alles in einem Satz zusammen.“"], a: 0,
+      e: "Wer selbst denken muss, merkt sich mehr. Die KI wird zur Trainerin statt zur Abschreibvorlage." },
+    { q: "Warum hat dir diese Seite falsche Benachrichtigungen gezeigt?",
+      o: ["Um zu zeigen, wie leicht Aufmerksamkeit gekapert wird", "Das war ein Programmierfehler", "Aus Werbegründen", "Damit du deinen Freund:innen schreibst"], a: 0,
+      e: "Zahlen, Serien und „nur 9 Sekunden“ sind gebaut, damit du zurückkommst. Wer das erkennt, entscheidet selbst." },
+    { q: "In der Beratungsfirma-Studie: Was passierte bei einer Aufgabe außerhalb der KI-Stärken?",
+      o: ["KI-Nutzer:innen lagen häufiger falsch, weil sie blind vertrauten", "Alle wurden schneller und besser", "Die KI hat die Aufgabe verweigert", "Es gab keinen Unterschied"], a: 0,
+      e: "19 Prozentpunkte häufiger falsch. Man muss wissen, wo KI gut ist und wo nicht. Dafür braucht man eigenes Verständnis." },
+    { q: "Was heißt „vom Flickwerk zur Struktur“?",
+      o: ["Bruchstücke aus vielen Fächern selbst zu einem Gerüst verbinden, das ich erklären kann", "Möglichst viele KI-Antworten sammeln", "Alles auswendig lernen", "Nur ein Fach gut können"], a: 0,
+      e: "Die KI liefert die Teile. Verstehen entsteht erst, wenn du sie ordnest und ohne Bildschirm erklären kannst." }
+  ];
+  const QTIME = 20;
+  const quizEl = $("#quiz");
+  let qi = 0, qRight = 0, qTimeUsed = 0, qRaf = null, qStart = 0, qOrder = [];
+  function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function quizIntro() {
+    quizActive = false;
+    quizEl.innerHTML = `<p>${QUIZ.length} Fragen, je ${QTIME} Sekunden. Der Balken läuft ab, sobald die Frage erscheint. Keine Test-Nachrichten während des Quiz.</p>
+      <button class="btn" type="button" id="quiz-start">Quiz starten</button>`;
+    $("#quiz-start").addEventListener("click", () => { qi = 0; qRight = 0; qTimeUsed = 0; qOrder = shuffle(QUIZ); quizActive = true; askQ(); });
+  }
+  function askQ() {
+    const item = qOrder[qi];
+    const opts = shuffle(item.o.map((t, i) => ({ t, ok: i === item.a })));
+    quizEl.innerHTML = `
+      <div class="qhead"><span>Frage ${qi + 1} / ${qOrder.length}</span><span id="qleft">${QTIME} s</span></div>
+      <div class="qtimer"><i id="qbar"></i></div>
+      <p class="qtext"></p>
+      <div class="opts"></div>
+      <p class="qfb" hidden></p>
+      <div class="row" id="qnext" hidden><button class="btn" type="button">Weiter</button></div>`;
+    $(".qtext", quizEl).textContent = item.q;
+    const box = $(".opts", quizEl);
+    const btns = opts.map(o => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "opt"; b.textContent = o.t;
+      b.addEventListener("click", () => answer(o.ok, b));
+      box.appendChild(b);
+      return { b, ok: o.ok };
+    });
+    let answered = false;
+    function answer(ok, b) {
+      if (answered) return;
+      answered = true;
+      cancelAnimationFrame(qRaf);
+      qTimeUsed += Math.min(QTIME, (performance.now() - qStart) / 1000);
+      btns.forEach(x => { x.b.disabled = true; if (x.ok) x.b.classList.add("ok"); });
+      if (b && !ok) b.classList.add("no");
+      if (ok) qRight++;
+      const fb = $(".qfb", quizEl);
+      fb.hidden = false;
+      fb.className = "qfb " + (ok ? "ok" : "no");
+      fb.innerHTML = `<strong>${ok ? "Richtig." : b ? "Leider falsch." : "Zeit abgelaufen."}</strong> `;
+      fb.appendChild(document.createTextNode(item.e));
+      const nx = $("#qnext"); nx.hidden = false;
+      const nb = $("button", nx);
+      nb.textContent = qi + 1 < qOrder.length ? "Nächste Frage" : "Ergebnis";
+      nb.addEventListener("click", () => { qi++; qi < qOrder.length ? askQ() : quizEnd(); });
+    }
+    qStart = performance.now();
+    const bar = $("#qbar"), left = $("#qleft");
+    const run = now => {
+      const el = (now - qStart) / 1000;
+      const rest = Math.max(0, QTIME - el);
+      bar.style.transform = `scaleX(${rest / QTIME})`;
+      left.textContent = `${Math.ceil(rest)} s`;
+      if (rest <= 0) { answer(false, null); return; }
+      qRaf = requestAnimationFrame(run);
+    };
+    qRaf = requestAnimationFrame(run);
+  }
+  function quizEnd() {
+    quizActive = false;
+    const pct = Math.round(qRight / qOrder.length * 100);
+    const msg = pct === 100 ? "Alles richtig. Du kannst das jemandem erklären." :
+                pct >= 75 ? "Stark. Schau dir die verpassten Fragen noch einmal an." :
+                pct >= 50 ? "Solide. Die Blöcke zu Agenten und Flickwerk lohnen einen zweiten Blick." :
+                "Noch nicht. Scroll zurück und lies die Merksätze, das kostet weniger als 2 Minuten.";
+    quizEl.innerHTML = `<div class="qscore"><span class="num">${qRight} / ${qOrder.length}</span>
+      <p>${msg}</p><p class="small muted">Gebraucht: ${Math.round(qTimeUsed)} von ${qOrder.length * QTIME} möglichen Sekunden.</p>
+      <button class="btn ghost" type="button" id="quiz-again">Nochmal spielen</button></div>`;
+    $("#quiz-again").addEventListener("click", () => { qi = 0; qRight = 0; qTimeUsed = 0; qOrder = shuffle(QUIZ); quizActive = true; askQ(); });
+  }
+  quizIntro();
+
+  requestAnimationFrame(t => { last = t; requestAnimationFrame(tick); });
+})();
+</script>
+</body>
+</html>
